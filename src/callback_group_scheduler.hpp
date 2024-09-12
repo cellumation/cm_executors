@@ -15,6 +15,24 @@ namespace rclcpp
 namespace executors
 {
 
+class GlobalEventIdProvider
+{
+  static std::atomic<uint64_t> last_event_id;
+
+public:
+  // Returns the last id, returnd by getNextId
+  static uint64_t get_last_id()
+  {
+    return last_event_id;
+  }
+
+  // increases the Id by one and returns the Id
+  static uint64_t get_next_id()
+  {
+    return (++last_event_id);
+  }
+};
+
 struct AnyExecutableCbgEv
 {
   std::function<void()> execute_function;
@@ -248,37 +266,37 @@ public:
 
   void add_ready_executable(rclcpp::SubscriptionBase::WeakPtr & executable)
   {
-    ready_subscriptions.add_ready_executable(executable, get_next_event_id());
+    ready_subscriptions.add_ready_executable(executable, GlobalEventIdProvider::get_next_id());
 //         RCUTILS_LOG_INFO("Subscription got data");
     work_available.notify_one();
   }
   void add_ready_executable(rclcpp::ServiceBase::WeakPtr & executable)
   {
-    ready_services.add_ready_executable(executable, get_next_event_id());
+    ready_services.add_ready_executable(executable, GlobalEventIdProvider::get_next_id());
 //         RCUTILS_LOG_INFO("Service got data");
     work_available.notify_one();
   }
   void add_ready_executable(rclcpp::TimerBase::WeakPtr & executable)
   {
-    ready_timers.add_ready_executable(executable, get_next_event_id());
+    ready_timers.add_ready_executable(executable, GlobalEventIdProvider::get_next_id());
 //         RCUTILS_LOG_INFO("Timer got data");
     work_available.notify_one();
   }
   void add_ready_executable(rclcpp::ClientBase::WeakPtr & executable)
   {
-    ready_clients.add_ready_executable(executable, get_next_event_id());
+    ready_clients.add_ready_executable(executable, GlobalEventIdProvider::get_next_id());
 //         RCUTILS_LOG_INFO("Client got data");
     work_available.notify_one();
   }
   void add_ready_executable(const WaitableWithEventType & executable)
   {
-    ready_waitables.add_ready_executable(executable, get_next_event_id());
-//         RCUTILS_LOG_INFO("Waitable got data");
+    ready_waitables.add_ready_executable(executable, GlobalEventIdProvider::get_next_id());
+    // RCUTILS_LOG_INFO(("Waitable got data using id " + std::to_string(id)).c_str());
     work_available.notify_one();
   }
   void add_ready_executable(const CallbackEventType & executable)
   {
-    ready_calls.add_ready_executable(executable, get_next_event_id());
+    ready_calls.add_ready_executable(executable, GlobalEventIdProvider::get_next_id());
 //         RCUTILS_LOG_INFO("Callback got data");
     work_available.notify_one();
   }
@@ -318,6 +336,9 @@ public:
     return false;
   }
 
+  /**
+   * @return true if something was executed
+   */
   bool execute_unprocessed_executable_until(
     const std::chrono::time_point<std::chrono::steady_clock> & stop_time,
     enum Priorities for_priority)
@@ -355,22 +376,7 @@ public:
            ready_waitables.has_unprocessed_executables();
   }
 
-  uint64_t get_last_used_event_id()
-  {
-      std::unique_lock lk(event_id_mutex);
-      return next_event_id - 1;
-  }
-
-
 private:
-
-  uint64_t get_next_event_id()
-  {
-      std::unique_lock lk(event_id_mutex);
-      uint64_t ret = next_event_id;
-      next_event_id++;
-      return ret;
-  }
 
 
   ExecutionQueue<rclcpp::TimerBase::WeakPtr> ready_timers;
@@ -381,9 +387,6 @@ private:
   ExecutionQueue<CallbackEventType> ready_calls;
 
   SchedulingPolicy sched_policy;
-
-  std::mutex event_id_mutex;
-  uint64_t next_event_id = 1;
 
   std::condition_variable & work_available;
 };

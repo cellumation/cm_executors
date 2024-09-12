@@ -36,6 +36,8 @@
 namespace rclcpp::executors
 {
 
+std::atomic<uint64_t> GlobalEventIdProvider::last_event_id = 1;
+
 struct GuardConditionWithFunction
 {
   GuardConditionWithFunction(rclcpp::GuardCondition::SharedPtr gc, std::function<void(void)> fun)
