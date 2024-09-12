@@ -123,7 +123,7 @@ private:
       return false;
     }
     any_executable.execute_function = [shr_ptr = std::move(shr_ptr)]() {
-        rclcpp::Executor::execute_subscription(shr_ptr);
+        rclcpp::executors::EventsCBGExecutor::execute_subscription(shr_ptr);
       };
 
     return true;
@@ -144,7 +144,7 @@ private:
 
     any_executable.execute_function = [shr_ptr = std::move(shr_ptr), data = std::move(data)]() {
 //         shr_ptr->execute_callback();
-        rclcpp::Executor::execute_timer(shr_ptr, data);
+        rclcpp::executors::EventsCBGExecutor::execute_timer(shr_ptr, data);
       };
 
     return true;
@@ -158,7 +158,7 @@ private:
       return false;
     }
     any_executable.execute_function = [shr_ptr = std::move(shr_ptr)]() {
-        rclcpp::Executor::execute_service(shr_ptr);
+        rclcpp::executors::EventsCBGExecutor::execute_service(shr_ptr);
       };
 
     return true;
@@ -172,7 +172,7 @@ private:
       return false;
     }
     any_executable.execute_function = [shr_ptr = std::move(shr_ptr)]() {
-        rclcpp::Executor::execute_client(shr_ptr);
+        rclcpp::executors::EventsCBGExecutor::execute_client(shr_ptr);
       };
 
     return true;
@@ -190,7 +190,7 @@ private:
     any_executable.execute_function =
       [shr_ptr = std::move(shr_ptr_in), data = std::move(data_in)]() mutable {
 //             RCUTILS_LOG_INFO("Before execute of waitable");
-        shr_ptr->execute(data);
+        shr_ptr->execute(static_cast<const std::shared_ptr<void>>(data));
       };
 
     return true;
