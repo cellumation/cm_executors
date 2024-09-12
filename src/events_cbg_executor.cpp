@@ -472,6 +472,38 @@ bool EventsCBGExecutor::execute_ready_executables_until(
   return found_work;
 }
 
+bool EventsCBGExecutor::execute_previous_ready_executables_until(
+    const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
+{
+  bool found_work = false;
+
+  const uint64_t last_ready_id = GlobalEventIdProvider::get_last_id();
+
+  // RCUTILS_LOG_ERROR_NAMED("rclcpp", (std::string("execute_previous_ready_executables last EV id is ") + std::to_string(last_ready_id)).c_str());
+
+  for (size_t i = CallbackGroupSchedulerEv::Priorities::Calls;
+    i <= CallbackGroupSchedulerEv::Priorities::Waitable; i++)
+  {
+    CallbackGroupSchedulerEv::Priorities cur_prio(static_cast<CallbackGroupSchedulerEv::Priorities>(
+        i ) );
+
+    for (CallbackGroupData & cbg_with_data : callback_groups) {
+      if (cbg_with_data.scheduler->execute_unprocessed_executable_until(last_ready_id, stop_time, cur_prio) ) {
+        found_work = true;
+
+        // RCUTILS_LOG_ERROR_NAMED("rclcpp", (std::string("execute_previous_ready_executables_until had work ") + std::to_string(found_work) + " last EV id is " + std::to_string(last_ready_id)).c_str());
+
+        if (std::chrono::steady_clock::now() >= stop_time) {
+          return true;
+        }
+      }
+    }
+  }
+  // RCUTILS_LOG_ERROR_NAMED("rclcpp", (std::string("execute_previous_ready_executables_until had work ") + std::to_string(found_work) + " last EV id is " + std::to_string(last_ready_id)).c_str());
+
+  return found_work;
+}
+
 
 bool EventsCBGExecutor::get_next_ready_executable(AnyExecutableCbgEv & any_executable)
 {
@@ -823,38 +855,19 @@ bool EventsCBGExecutor::collect_and_execute_ready_events(
   const auto end_time = start + max_duration;
   auto cur_time = start;
 
-  // collect any work, that is already ready
-//   wait_for_work(std::chrono::nanoseconds::zero(), true);
-
-  bool got_work_since_collect = false;
-  bool first_collect = true;
   bool had_work = false;
 
-  //FIXME this is super hard to do, we need to know when to stop
-
   while (rclcpp::ok(this->context_) && spinning && cur_time <= end_time) {
-    if (!execute_ready_executables_until(end_time) ) {
 
-      if (!first_collect && !recollect_if_no_work_available) {
-        // we are done
-        return had_work;
-      }
-
-      if (first_collect || got_work_since_collect) {
-        // wait for new work
-
-//                 std::unique_lock lk(conditional_mutex);
-//                 work_ready_conditional.wait_for(lk, std::chrono::nanoseconds::zero());
-//                 wait_for_work(std::chrono::nanoseconds::zero(), !first_collect);
-
-        first_collect = false;
-        got_work_since_collect = false;
-        continue;
-      }
-
+    if (!execute_previous_ready_executables_until(end_time) ) {
       return had_work;
-    } else {
-      got_work_since_collect = true;
+    }
+
+    had_work = true;
+
+    if (!recollect_if_no_work_available) {
+      // we are done
+      return had_work;
     }
 
     cur_time = std::chrono::steady_clock::now();

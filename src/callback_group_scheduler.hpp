@@ -108,6 +108,36 @@ public:
     return false;
   }
 
+  bool execute_unprocessed_executable_until(const uint64_t max_id,
+    const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
+  {
+    bool executed_executable = false;
+
+    while (!ready_executables.empty()) {
+
+      // RCUTILS_LOG_ERROR_NAMED("rclcpp", (std::string("execute_unprocessed_executable_until front id ") + std::to_string(ready_executables.front().event_id) + " max_id id is " + std::to_string(max_id)).c_str());
+      if(ready_executables.front().event_id > max_id)
+      {
+        return executed_executable;
+      }
+
+      AnyExecutableCbgEv any_executable;
+      if (fill_any_executable(any_executable, ready_executables.front().executable)) {
+        ready_executables.pop_front();
+
+        any_executable.execute_function();
+
+        executed_executable = true;
+
+        if (std::chrono::steady_clock::now() >= stop_time) {
+          return true;
+        }
+      }
+    }
+
+    return executed_executable;
+  }
+
   bool execute_unprocessed_executable_until(
     const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
   {
@@ -361,6 +391,33 @@ public:
         break;
       case Waitable:
         return ready_waitables.execute_unprocessed_executable_until(stop_time);
+        break;
+    }
+    return false;
+  }
+
+    bool execute_unprocessed_executable_until(const uint64_t max_id,
+    const std::chrono::time_point<std::chrono::steady_clock> & stop_time,
+    enum Priorities for_priority)
+  {
+    switch (for_priority) {
+      case Calls:
+        return ready_calls.execute_unprocessed_executable_until(max_id, stop_time);
+        break;
+      case Client:
+        return ready_clients.execute_unprocessed_executable_until(max_id, stop_time);
+        break;
+      case Service:
+        return ready_services.execute_unprocessed_executable_until(max_id, stop_time);
+        break;
+      case Subscription:
+        return ready_subscriptions.execute_unprocessed_executable_until(max_id, stop_time);
+        break;
+      case Timer:
+        return ready_timers.execute_unprocessed_executable_until(max_id, stop_time);
+        break;
+      case Waitable:
+        return ready_waitables.execute_unprocessed_executable_until(max_id, stop_time);
         break;
     }
     return false;

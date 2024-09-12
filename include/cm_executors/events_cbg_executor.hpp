@@ -237,6 +237,13 @@ protected:
   bool execute_ready_executables_until(
     const std::chrono::time_point<std::chrono::steady_clock> & stop_time);
 
+  /**
+   * This function will execute all available executables,
+   * that were ready, before this function was called.
+   */
+  bool execute_previous_ready_executables_until(
+    const std::chrono::time_point<std::chrono::steady_clock> & stop_time);
+
   void unregister_event_callbacks(const rclcpp::CallbackGroup::SharedPtr & cbg) const;
 
 private:
