@@ -27,6 +27,7 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp/memory_strategies.hpp"
 #include "rclcpp/visibility_control.hpp"
+#include "registered_entity_cache.hpp"
 
 namespace rclcpp
 {
@@ -38,6 +39,7 @@ struct WeakExecutableCache;
 struct AnyExecutableCbgEv;
 class TimerManager;
 struct GloablaWeakExecutableCache;
+
 
 class EventsCBGExecutor : public rclcpp::Executor
 {
@@ -221,18 +223,16 @@ protected:
   void
   run(size_t this_thread_number);
 
+  std::unique_ptr<CBGScheduler> scheduler;
+
   struct CallbackGroupData
   {
     CallbackGroup::WeakPtr callback_group;
 
-    std::unique_ptr<CallbackGroupSchedulerEv> scheduler;
-    std::unique_ptr<WeakExecutableCache> executable_cache;
+    std::unique_ptr<RegisteredEntityCache> registered_entities;
   };
 
   void set_callbacks(CallbackGroupData & cgd);
-
-  bool
-  get_next_ready_executable(AnyExecutableCbgEv & any_executable);
 
   bool execute_ready_executables_until(
     const std::chrono::time_point<std::chrono::steady_clock> & stop_time);
@@ -255,8 +255,8 @@ private:
 
   void spin_once_internal(std::chrono::nanoseconds timeout);
 
-  void wakeup_processing_thread();
-  void wakeup_all_processing_threads();
+//   void wakeup_processing_thread();
+//   void wakeup_all_processing_threads();
 
   RCLCPP_DISABLE_COPY(EventsCBGExecutor)
 
@@ -289,9 +289,6 @@ private:
   /// Guard condition for signaling the rmw layer to wake up for system shutdown.
   std::shared_ptr<rclcpp::GuardCondition> shutdown_guard_condition_;
 
-  /// Wait set for managing entities that the rmw layer waits on.
-  rcl_wait_set_t wait_set_ = rcl_get_zero_initialized_wait_set();
-
   /// shutdown callback handle registered to Context
   rclcpp::OnShutdownCallbackHandle shutdown_callback_handle_;
 
@@ -307,10 +304,10 @@ private:
   /// Stores the executables for guard conditions of the nodes
   std::unique_ptr<GloablaWeakExecutableCache> nodes_executable_cache;
 
-  std::mutex conditional_mutex;
-
-  size_t unprocessed_wakeups = 0;
-  std::condition_variable work_ready_conditional;
+//   std::mutex conditional_mutex;
+//
+//   size_t unprocessed_wakeups = 0;
+//   std::condition_variable work_ready_conditional;
 
 };
 

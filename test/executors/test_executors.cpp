@@ -461,37 +461,30 @@ TYPED_TEST(TestExecutors, spinAll)
   waitable_interfaces->add_waitable(my_waitable, nullptr);
   executor.add_node(this->node);
 
-  // Long timeout, but should not block test if spin_all works as expected as we cancel the
-  // executor.
-  bool spin_exited = false;
-  std::thread spinner([&spin_exited, &executor, this]() {
-      executor.spin_all(1s);
-      executor.remove_node(this->node, true);
-      spin_exited = true;
-    });
+  my_waitable->set_on_execute_callback([my_waitable]() {
+    RCUTILS_LOG_ERROR_NAMED("TestExecutors", "spinAll on_execute_callback called");
+    if(my_waitable->get_count() < 2)
+    {
+    RCUTILS_LOG_ERROR_NAMED("TestExecutors", "my_waitable trigger called");
+      // retrigger after collect, this
+      my_waitable->trigger();
+    }
+  });
 
-  // Do some work until sufficient calls to the waitable occur
-  auto start = std::chrono::steady_clock::now();
-  while (
-    my_waitable->get_count() <= 1 &&
-    !spin_exited &&
-    (std::chrono::steady_clock::now() - start < 1s))
-  {
-    my_waitable->trigger();
-    this->publisher->publish(test_msgs::msg::Empty());
-    std::this_thread::sleep_for(1ms);
-  }
+  // trigger one time before the spin_all so the on_execute_callback
+  // is executed at least one time
+  my_waitable->trigger();
 
-  executor.cancel();
-  start = std::chrono::steady_clock::now();
-  while (!spin_exited && (std::chrono::steady_clock::now() - start) < 1s) {
-    std::this_thread::sleep_for(1ms);
-  }
+  RCUTILS_LOG_ERROR_NAMED("TestExecutors", "before spin");
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  // Long timeout, but should not block
+  executor.spin_all(1s);
+  executor.remove_node(this->node, true);
 
   EXPECT_LT(1u, my_waitable->get_count());
   waitable_interfaces->remove_waitable(my_waitable, nullptr);
-  ASSERT_TRUE(spin_exited);
-  spinner.join();
 }
 
 // Helper function to convert chrono durations into a scalar that GoogleTest

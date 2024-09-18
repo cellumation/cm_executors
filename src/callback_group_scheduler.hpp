@@ -9,29 +9,14 @@
 #include <rclcpp/service.hpp>
 #include <rclcpp/client.hpp>
 #include <rclcpp/executor.hpp>
+#include <cm_executors/global_event_id_provider.hpp>
 
 namespace rclcpp
 {
 namespace executors
 {
 
-class GlobalEventIdProvider
-{
-  static std::atomic<uint64_t> last_event_id;
 
-public:
-  // Returns the last id, returnd by getNextId
-  static uint64_t get_last_id()
-  {
-    return last_event_id;
-  }
-
-  // increases the Id by one and returns the Id
-  static uint64_t get_next_id()
-  {
-    return (++last_event_id);
-  }
-};
 
 struct AnyExecutableCbgEv
 {
