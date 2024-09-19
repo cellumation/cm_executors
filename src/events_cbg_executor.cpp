@@ -386,25 +386,6 @@ EventsCBGExecutor::~EventsCBGExecutor()
 
 }
 
-// void EventsCBGExecutor::wakeup_processing_thread()
-// {
-//   {
-//     std::unique_lock lk(conditional_mutex);
-//     unprocessed_wakeups++;
-//   }
-//   work_ready_conditional.notify_one();
-// }
-
-// void EventsCBGExecutor::wakeup_all_processing_threads()
-// {
-//   {
-//     std::unique_lock lk(conditional_mutex);
-//     unprocessed_wakeups++;
-//   }
-//   work_ready_conditional.notify_all();
-// }
-
-
 void EventsCBGExecutor::remove_all_nodes_and_callback_groups()
 {
   std::vector<node_interfaces::NodeBaseInterface::WeakPtr> added_nodes_cpy;
@@ -495,77 +476,6 @@ bool EventsCBGExecutor::execute_previous_ready_executables_until(
 }
 
 
-// bool EventsCBGExecutor::get_next_ready_executable(AnyExecutableCbgEv & any_executable)
-// {
-//   if (!spinning.load() ) {
-//     return false;
-//   }
-//
-//   std::lock_guard g(callback_groups_mutex);
-//
-//   sync_callback_groups();
-//
-// //     RCUTILS_LOG_ERROR_NAMED("rclcpp", "get_next_ready_executable");
-//
-//   struct ReadyCallbacksWithSharedPtr
-//   {
-//     CallbackGroupData * data;
-//     rclcpp::CallbackGroup::SharedPtr callback_group;
-//     bool ready = true;
-//   };
-//
-//   std::vector<ReadyCallbacksWithSharedPtr> ready_callbacks;
-//   ready_callbacks.reserve(callback_groups.size() );
-//
-//
-//   for (auto it = callback_groups.begin(); it != callback_groups.end(); ) {
-//     CallbackGroupData & cbg_with_data(*it);
-//
-//     ReadyCallbacksWithSharedPtr e;
-//     e.callback_group = cbg_with_data.callback_group.lock();
-//     if (!e.callback_group) {
-//       it = callback_groups.erase(it);
-//       continue;
-//     }
-//
-//     if (e.callback_group->can_be_taken_from().load() ) {
-//       e.data = &cbg_with_data;
-//       ready_callbacks.push_back(std::move(e) );
-//     }
-//
-//     it++;
-//   }
-//
-//   bool found_work = false;
-//
-//   for (size_t i = CallbackGroupSchedulerEv::Priorities::Calls;
-//     i <= CallbackGroupSchedulerEv::Priorities::Waitable; i++)
-//   {
-//     CallbackGroupSchedulerEv::Priorities cur_prio(static_cast<CallbackGroupSchedulerEv::Priorities>(
-//         i ) );
-//     for (ReadyCallbacksWithSharedPtr & ready_elem: ready_callbacks) {
-//
-//       if (!found_work) {
-//         if (ready_elem.data->scheduler->get_unprocessed_executable(any_executable, cur_prio) ) {
-//           // mark callback group as in use
-//           ready_elem.callback_group->can_be_taken_from().store(false);
-//           any_executable.callback_group = ready_elem.callback_group;
-//           found_work = true;
-//           ready_elem.ready = false;
-// //                     RCUTILS_LOG_ERROR_NAMED("rclcpp", "get_next_ready_executable : found ready executable");
-//         }
-//       } else {
-//         if (ready_elem.ready && ready_elem.data->scheduler->has_unprocessed_executables() ) {
-//           //wake up worker thread
-//           wakeup_processing_thread();
-//           return true;
-//         }
-//       }
-//     }
-//   }
-//
-//   return found_work;
-// }
 
 size_t
 EventsCBGExecutor::get_number_of_threads()
@@ -609,7 +519,7 @@ void EventsCBGExecutor::sync_callback_groups()
 
       for (const auto & pair : cur_group_data) {
         if (pair.second == cbg) {
-              RCUTILS_LOG_INFO("Using existing callback group");
+//               RCUTILS_LOG_INFO("Using existing callback group");
           next_group_data.push_back(std::move(*pair.first) );
           // call regenerate, in case something changed in the group
           next_group_data.back().registered_entities->regenerate_events();
@@ -687,33 +597,6 @@ void EventsCBGExecutor::do_housekeeping()
 
   sync_callback_groups();
 
-  {
-//         std::lock_guard g ( callback_groups_mutex );
-//         for ( CallbackGroupData & cbg_with_data: callback_groups ) {
-//
-//             // don't add anything to a waitset that has unprocessed data
-//             if ( cbg_with_data.scheduler->has_unprocessed_executables() ) {
-//                 continue;
-//             }
-//
-//             auto cbg_shr_ptr = cbg_with_data.callback_group.lock();
-//             if ( !cbg_shr_ptr ) {
-//                 continue;
-//             }
-//
-//             if ( !cbg_shr_ptr->can_be_taken_from() ) {
-//                 continue;
-//             }
-//
-//             //     CallbackGroupState & cbg_state = *cbg_with_data.callback_group_state;
-//             // regenerate the state data
-//             if ( cbg_with_data.executable_cache->cache_ditry ) {
-//                 //       RCUTILS_LOG_INFO("Regenerating callback group");
-//                 // Regenerating clears the dirty flag
-//                 cbg_with_data.executable_cache->regenerate_events ( cbg_shr_ptr );
-//             }
-//         }
-  }
 
 }
 
@@ -729,13 +612,14 @@ EventsCBGExecutor::run(size_t this_thread_number)
     auto ready_entity = scheduler->get_next_ready_entity();
     if(!ready_entity)
     {
-      RCUTILS_LOG_INFO("Worker found no work");
+      RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"), "Worker found no work. thread " << std::this_thread::get_id() << " going to sleep");
       scheduler->block_worker_thread();
-      RCUTILS_LOG_INFO("Worker woken up");
+      RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " woken up");
+//       RCUTILS_LOG_INFO("Worker woken up");
       continue;
     }
 
-    RCUTILS_LOG_INFO("Worker executing work");
+    RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " executing work");
     ready_entity->execute_function();
 
     scheduler->mark_entity_as_executed(*ready_entity);

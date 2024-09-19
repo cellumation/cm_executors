@@ -25,7 +25,7 @@ class TimerQueue
   struct TimerData
   {
     std::shared_ptr<const rcl_timer_t> rcl_ref;
-    std::function<void()> timer_ready_callback;
+    std::function<void(const std::function<void()> executed_cb)> timer_ready_callback;
   };
 
 public:
@@ -117,7 +117,7 @@ public:
    */
   void add_timer(
     const rclcpp::TimerBase::SharedPtr & timer,
-    const std::function<void()> & timer_ready_callback)
+    const std::function<void(const std::function<void()> executed_cb)> & timer_ready_callback)
   {
     rcl_clock_t * clock_type_of_timer;
 
@@ -226,28 +226,12 @@ private:
 
   void call_ready_timer_callbacks()
   {
-    auto readd_timer_to_running_map = [this](TimerMap::node_type && e)
-      {
-        const auto & timer_data = e.mapped();
-        if(remove_if_dropped(timer_data))
-        {
-          return;
-        }
-
-        int64_t next_call_time;
-
-        auto ret = rcl_timer_get_next_call_time(timer_data->rcl_ref.get(), &next_call_time);
-
-        if (ret == RCL_RET_OK) {
-          e.key() = std::chrono::nanoseconds(next_call_time);
-          running_timers.insert(std::move(e));
-        }
-      };
 
     while (!running_timers.empty()) {
 
       if(remove_if_dropped(running_timers.begin()->second))
       {
+        running_timers.erase(running_timers.begin());
         continue;
       }
 
@@ -261,6 +245,27 @@ private:
       }
 
       if (time_until_call <= 0) {
+
+        // timer is ready, call ready callback to make the scheduler pick it up
+        running_timers.begin()->second->timer_ready_callback(
+          [timer_data = running_timers.begin()->second, this] ()
+          {
+            // Note, we have the gurantee, that the shared_ptr to this timer is
+            // valid in case this callback is executed, as the executor holds a
+            // reference to the timer during execution and at the time of this callback.
+            // Therefore timer_data is valid.
+            std::scoped_lock l(mutex);
+            add_timer_to_running_map(timer_data);
+          }
+        );
+
+        // remove timer from, running list, until it was executed
+        // the scheduler will readd the timer after execution
+        running_timers.erase(running_timers.begin());
+/*
+
+        const auto & node = running_timers.extract(running_timers.begin())
+
         // advance next call time;
         rcl_ret_t ret = rcl_timer_call(const_cast<rcl_timer_t *>(rcl_timer_ref));
         if (ret == RCL_RET_TIMER_CANCELED) {
@@ -268,9 +273,9 @@ private:
           continue;
         }
 
-        // timer is ready, execute callback
-        running_timers.begin()->second->timer_ready_callback();
-        readd_timer_to_running_map(running_timers.extract(running_timers.begin()));
+        RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "rcl_timer_call called : readding");
+
+        readd_timer_to_running_map(running_timers.extract(running_timers.begin()));*/
         continue;
       }
       break;
@@ -339,7 +344,7 @@ public:
 
   void add_timer(
     const rclcpp::TimerBase::SharedPtr & timer,
-    const std::function<void()> & timer_ready_callback)
+    const std::function<void(const std::function<void()> executed_cb)> & timer_ready_callback)
   {
     for (TimerQueue & q : timer_queues) {
       q.add_timer(timer, timer_ready_callback);

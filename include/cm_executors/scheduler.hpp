@@ -4,6 +4,7 @@
 #include <list>
 #include <rclcpp/callback_group.hpp>
 #include "global_event_id_provider.hpp"
+#include <deque>
 
 namespace rclcpp
 {
@@ -54,7 +55,7 @@ public:
     virtual ~CallbackGroupHandle() = default;
 
     virtual std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::SubscriptionBase::WeakPtr & entity) = 0;
-    virtual std::function<void()> get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity) = 0;
+    virtual std::function<void(std::function<void()> executed_callback)> get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity) = 0;
     virtual std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::ClientBase::WeakPtr & entity) = 0;
     virtual std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::ServiceBase::WeakPtr & entity) = 0;
     virtual std::function<void(size_t, int)> get_ready_callback_for_entity(const rclcpp::Waitable::WeakPtr & entity) = 0;
