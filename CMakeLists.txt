@@ -33,6 +33,7 @@ add_library(${PROJECT_NAME}
   src/events_cbg_executor.cpp
   src/global_event_id_provider.cpp
   src/FirstInFirstOutScheduler.cpp
+  src/PriorityScheduler.cpp
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -49,6 +50,7 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+install(DIRECTORY include/ DESTINATION include)
 
 # Export old-style CMake variables
 ament_export_include_directories("include/${PROJECT_NAME}")
