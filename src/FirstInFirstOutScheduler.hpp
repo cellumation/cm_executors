@@ -18,7 +18,7 @@ public:
     ~FirstInFirstOutCallbackGroupHandle() final {} ;
 
   std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::SubscriptionBase::WeakPtr & entity) final;
-  virtual std::function<void(std::function<void()> executed_callback)> get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity) final;
+  std::function<void(std::function<void()> executed_callback)> get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity) final;
   std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::ClientBase::WeakPtr & entity) final;
   std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::ServiceBase::WeakPtr & entity) final;
   std::function<void(size_t, int)> get_ready_callback_for_entity(const rclcpp::Waitable::WeakPtr & entity) final;
