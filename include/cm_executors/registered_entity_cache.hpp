@@ -137,7 +137,7 @@ struct RegisteredEntityCache
   {
     clear();
 
-    RCUTILS_LOG_ERROR_NAMED("RegisteredEntityCache", "FOOOOO regenerate_events");
+//     RCUTILS_LOG_ERROR_NAMED("RegisteredEntityCache", "FOOOOO regenerate_events");
 
     rclcpp::CallbackGroup::SharedPtr callback_group = callback_group_weak_ptr.lock();
 
@@ -164,7 +164,7 @@ struct RegisteredEntityCache
       };
     const auto add_timer = [this](const rclcpp::TimerBase::SharedPtr & s) {
 
-        RCUTILS_LOG_ERROR_NAMED("RegisteredEntityCache", "add_timer called for callback group");
+//         RCUTILS_LOG_ERROR_NAMED("RegisteredEntityCache", "add_timer called for callback group");
 
         // we 'miss use'  this function, to make sure we don't add a timer two times
         if(!s->exchange_in_use_by_wait_set_state(true))

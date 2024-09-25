@@ -21,9 +21,7 @@
 #include <deque>
 #include <unordered_map>
 
-// #include "rclcpp/executors/detail/weak_executable_with_rcl_handle.hpp"
 #include "rclcpp/executor.hpp"
-// #include "rclcpp/executors/callback_group_state.hpp"
 #include "rclcpp/macros.hpp"
 #include "rclcpp/memory_strategies.hpp"
 #include "rclcpp/visibility_control.hpp"
@@ -34,12 +32,7 @@ namespace rclcpp
 namespace executors
 {
 
-class CallbackGroupSchedulerEv;
-struct WeakExecutableCache;
-struct AnyExecutableCbgEv;
 class TimerManager;
-struct GloablaWeakExecutableCache;
-
 
 class EventsCBGExecutor : public rclcpp::Executor
 {
@@ -251,18 +244,11 @@ protected:
 private:
   void remove_all_nodes_and_callback_groups();
 
-  void do_housekeeping();
-
   void sync_callback_groups();
 
   void spin_once_internal(std::chrono::nanoseconds timeout);
 
-//   void wakeup_processing_thread();
-//   void wakeup_all_processing_threads();
-
   RCLCPP_DISABLE_COPY(EventsCBGExecutor)
-
-  std::deque<std::function<void(void)>> update_functions;
 
   std::mutex added_callback_groups_mutex_;
   std::vector<rclcpp::CallbackGroup::WeakPtr> added_callback_groups;
@@ -272,10 +258,9 @@ private:
 
   std::mutex callback_groups_mutex;
 
-  //FIXME make unique_ptr
   std::vector<CallbackGroupData> callback_groups;
 
-  std::mutex wait_mutex_;
+//   std::mutex wait_mutex_;
   size_t number_of_threads_;
 
   std::chrono::nanoseconds next_exec_timeout_;
@@ -305,12 +290,6 @@ private:
 
   /// Stores the executables for guard conditions of the nodes
   std::unique_ptr<GloablaWeakExecutableCache> nodes_executable_cache;
-
-//   std::mutex conditional_mutex;
-//
-//   size_t unprocessed_wakeups = 0;
-//   std::condition_variable work_ready_conditional;
-
 };
 
 }  // namespace executors

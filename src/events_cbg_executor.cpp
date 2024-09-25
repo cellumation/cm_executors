@@ -29,68 +29,11 @@
 #include "rclcpp/logging.hpp"
 #include "rclcpp/node.hpp"
 #include <inttypes.h>
-#include "callback_group_scheduler.hpp"
 #include <cm_executors/timer_manager.hpp>
-// #include "rclcpp/executors/detail/any_executable_weak_ref.hpp"
 #include "FirstInFirstOutScheduler.hpp"
+
 namespace rclcpp::executors
 {
-
-
-
-// struct GuardConditionWithFunction
-// {
-//   GuardConditionWithFunction(rclcpp::GuardCondition::SharedPtr gc, std::function<void(void)> fun)
-//   : guard_condition(std::move(gc)), handle_guard_condition_fun(std::move(fun))
-//   {
-//   }
-//
-//   rclcpp::GuardCondition::SharedPtr guard_condition;
-//
-//   // A function that should be executed if the guard_condition is ready
-//   std::function<void(void)> handle_guard_condition_fun;
-// };
-//
-// template<class ExecutableType_T>
-// struct WeakExecutableWithScheduler
-// {
-//   WeakExecutableWithScheduler(
-//     const std::shared_ptr<ExecutableType_T> & executable,
-//     CallbackGroupSchedulerEv * scheduler)
-//   : executable(executable), scheduler(scheduler)
-//   {
-//   }
-//
-//   using ExecutableType = ExecutableType_T;
-//
-// //  WeakExecutableWithRclHandle(WeakExecutableWithRclHandle &&) = default;
-// /*
-//    WeakExecutableWithRclHandle& operator= (const WeakExecutableWithRclHandle &) = delete;*/
-//
-//
-//   std::weak_ptr<ExecutableType> executable;
-//   CallbackGroupSchedulerEv * scheduler;
-//
-//   bool processed;
-//
-//   bool executable_alive()
-//   {
-//     auto use_cnt = executable.use_count();
-//     if (use_cnt == 0) {
-//       return false;
-//     }
-//
-//     return true;
-//   }
-// };
-//
-// using WeakTimerRef = WeakExecutableWithScheduler<rclcpp::TimerBase>;
-//
-// using WeakSubscriberRef = WeakExecutableWithScheduler<rclcpp::SubscriptionBase>;
-// using WeakClientRef = WeakExecutableWithScheduler<rclcpp::ClientBase>;
-// using WeakServiceRef = WeakExecutableWithScheduler<rclcpp::ServiceBase>;
-// using WeakWaitableRef = WeakExecutableWithScheduler<rclcpp::Waitable>;
-
 
 struct GloablaWeakExecutableCache
 {
@@ -129,193 +72,6 @@ struct GloablaWeakExecutableCache
 
 };
 
-// struct WeakExecutableCache
-// {
-//   WeakExecutableCache(CallbackGroupSchedulerEv & scheduler, TimerManager & timer_manager)
-//   : scheduler(scheduler),
-//     timer_manager(timer_manager)
-//   {
-//   }
-//
-//   std::vector<WeakTimerRef> timers;
-//   std::vector<WeakSubscriberRef> subscribers;
-//   std::vector<WeakClientRef> clients;
-//   std::vector<WeakServiceRef> services;
-//   std::vector<WeakWaitableRef> waitables;
-//   std::vector<GuardConditionWithFunction> guard_conditions;
-//
-//   CallbackGroupSchedulerEv & scheduler;
-//
-//   TimerManager & timer_manager;
-//
-//   ~WeakExecutableCache()
-//   {
-//     for (const auto & timer_ref : timers) {
-//       auto shr_ptr = timer_ref.executable.lock();
-//       if (shr_ptr) {
-//         shr_ptr->clear_on_reset_callback();
-//       }
-//     }
-//     for (const auto & timer_ref : subscribers) {
-//       auto shr_ptr = timer_ref.executable.lock();
-//       if (shr_ptr) {
-//         shr_ptr->clear_on_new_message_callback();
-//       }
-//     }
-//     for (const auto & timer_ref : clients) {
-//       auto shr_ptr = timer_ref.executable.lock();
-//       if (shr_ptr) {
-//         shr_ptr->clear_on_new_response_callback();
-//       }
-//     }
-//     for (const auto & timer_ref : services) {
-//       auto shr_ptr = timer_ref.executable.lock();
-//       if (shr_ptr) {
-//         shr_ptr->clear_on_new_request_callback();
-//       }
-//     }
-//     for (const auto & timer_ref : waitables) {
-//       auto shr_ptr = timer_ref.executable.lock();
-//       if (shr_ptr) {
-//         shr_ptr->clear_on_ready_callback();
-//       }
-//     }
-//     for (const auto & gc_ref : guard_conditions) {
-//       gc_ref.guard_condition->set_on_trigger_callback(nullptr);
-//     }
-//   }
-//
-// //     bool cache_ditry = true;
-//
-//   void clear()
-//   {
-//     timers.clear();
-//     subscribers.clear();
-//     clients.clear();
-//     services.clear();
-//     waitables.clear();
-//     guard_conditions.clear();
-//   }
-//
-//
-//   void regenerate_events(const rclcpp::CallbackGroup::SharedPtr & callback_group)
-//   {
-//     clear();
-//
-// //           RCUTILS_LOG_ERROR_NAMED("rclcpp", "FOOOOO regenerate_events");
-//
-//
-//     // we reserve to much memory here, this this should be fine
-//     if (timers.capacity() == 0) {
-//       timers.reserve(callback_group->size() );
-//       subscribers.reserve(callback_group->size() );
-//       clients.reserve(callback_group->size() );
-//       services.reserve(callback_group->size() );
-//       waitables.reserve(callback_group->size() );
-//     }
-//
-//     const auto add_sub = [this](const rclcpp::SubscriptionBase::SharedPtr & s) {
-//         //element not found, add new one
-// //       auto &entry = subscribers.emplace_back(WeakSubscriberRef(s, &scheduler));
-//         s->set_on_new_message_callback(
-//           [weak_ptr = rclcpp::SubscriptionBase::WeakPtr(s), this](size_t nr_msg) mutable {
-// //                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
-//             for (size_t i = 0; i < nr_msg; i++) {
-//               scheduler.add_ready_executable(weak_ptr);
-//             }
-//           });
-//       };
-//     const auto add_timer = [this](const rclcpp::TimerBase::SharedPtr & s) {
-//         timer_manager.add_timer(
-//           s, [weak_ptr = rclcpp::TimerBase::WeakPtr(s), this]() mutable {
-// //                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "added timer executable");
-//
-//             scheduler.add_ready_executable(weak_ptr);
-//           });
-//       };
-//
-//     const auto add_client = [this](const rclcpp::ClientBase::SharedPtr & s) {
-//         s->set_on_new_response_callback(
-//           [weak_ptr = rclcpp::ClientBase::WeakPtr(s), this](size_t nr_msg) mutable {
-//             for (size_t i = 0; i < nr_msg; i++) {
-//               scheduler.add_ready_executable(weak_ptr);
-//             }
-//           });
-//       };
-//
-//     const auto add_service = [this](const rclcpp::ServiceBase::SharedPtr & s) {
-//         s->set_on_new_request_callback(
-//           [weak_ptr = rclcpp::ServiceBase::WeakPtr(s), this](size_t nr_msg) mutable {
-//             for (size_t i = 0; i < nr_msg; i++) {
-//               scheduler.add_ready_executable(weak_ptr);
-//             }
-//           });
-//       };
-//
-//     auto cbFun = [weak_ptr = rclcpp::CallbackGroup::WeakPtr(callback_group), this]() {
-//
-// //             RCUTILS_LOG_ERROR_NAMED("rclcpp", "GC: Callback group was changed");
-//
-//         if (!rclcpp::contexts::get_global_default_context()->shutdown_reason().empty()) {
-//           return;
-//         }
-//
-//         if (!rclcpp::ok(rclcpp::contexts::get_global_default_context())) {
-//           return;
-//         }
-//
-//         rclcpp::CallbackGroup::SharedPtr cbg = weak_ptr.lock();
-//
-//         if (cbg) {
-//           regenerate_events(cbg);
-//         }
-//       };
-//
-//     add_guard_condition_event(
-//       callback_group->get_notify_guard_condition(), [cbFun, this]() {
-// //             RCUTILS_LOG_INFO("Callback group nofity callback !!!!!!!!!!!!");
-//
-//
-//         scheduler.add_ready_executable(CallbackEventType(cbFun));
-//       }
-//     );
-//
-//     const auto add_waitable = [this](const rclcpp::Waitable::SharedPtr & s) {
-//         s->set_on_ready_callback(
-//           [weak_ptr = rclcpp::Waitable::WeakPtr(s), this](size_t nr_msg,
-//           int internal_ev_type) mutable {
-// //             RCUTILS_LOG_INFO("Waitable read, ev cnt : %lu", nr_msg);
-//             for (size_t i = 0; i < nr_msg; i++) {
-//               scheduler.add_ready_executable(WaitableWithEventType{weak_ptr, internal_ev_type});
-//             }
-//           });
-//       };
-//
-//
-//     callback_group->collect_all_ptrs(add_sub, add_service, add_client, add_timer, add_waitable);
-//
-// //     RCUTILS_LOG_ERROR_NAMED("rclcpp", "GC: regeneraetd, new size : t %lu, sub %lu, c %lu, s %lu, gc %lu, waitables %lu", wait_set_size.timers, wait_set_size.subscriptions, wait_set_size.clients, wait_set_size.services, wait_set_size.guard_conditions, waitables.size());
-//   }
-//
-//   void add_guard_condition_event(
-//     rclcpp::GuardCondition::SharedPtr ptr,
-//     std::function<void(void)> fun)
-//   {
-//     auto & new_entry = guard_conditions.emplace_back(
-//       GuardConditionWithFunction(
-//         ptr, std::move(
-//           fun) ) );
-//
-//     if (new_entry.handle_guard_condition_fun) {
-//       new_entry.guard_condition->set_on_trigger_callback(
-//         [fun2 = new_entry.handle_guard_condition_fun, this](size_t /*nr_events*/) {
-//           scheduler.add_ready_executable(CallbackEventType(fun2));
-//         });
-//     }
-//   }
-// };
-
-
 EventsCBGExecutor::EventsCBGExecutor(
   const rclcpp::ExecutorOptions & options,
   size_t number_of_threads,
@@ -336,9 +92,6 @@ EventsCBGExecutor::EventsCBGExecutor(
         interrupt_guard_condition_,
         std::function<void ( void ) >() );
 
-//     global_executable_cache->add_guard_condition_event (
-//         interrupt_guard_condition_,
-//         std::function<void ( void ) >() );
   global_executable_cache->add_guard_condition_event(
     shutdown_guard_condition_, [this]() {
 
@@ -506,7 +259,7 @@ void EventsCBGExecutor::sync_callback_groups()
   if (!needs_callback_group_resync.exchange(false) ) {
     return;
   }
-  RCUTILS_LOG_ERROR_NAMED("rclcpp", "sync_callback_groups");
+//   RCUTILS_LOG_ERROR_NAMED("rclcpp", "sync_callback_groups");
 
   std::vector<std::pair<CallbackGroupData *, rclcpp::CallbackGroup::SharedPtr>> cur_group_data;
   cur_group_data.reserve(callback_groups.size() );
@@ -608,16 +361,6 @@ void EventsCBGExecutor::sync_callback_groups()
   callback_groups.swap(next_group_data);
 }
 
-
-void EventsCBGExecutor::do_housekeeping()
-{
-  using namespace rclcpp::exceptions;
-
-  sync_callback_groups();
-
-
-}
-
 void
 EventsCBGExecutor::run(size_t this_thread_number)
 {
@@ -630,14 +373,13 @@ EventsCBGExecutor::run(size_t this_thread_number)
     auto ready_entity = scheduler->get_next_ready_entity();
     if(!ready_entity)
     {
-      RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"), "Worker found no work. thread " << std::this_thread::get_id() << " going to sleep");
+//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"), "Worker found no work. thread " << std::this_thread::get_id() << " going to sleep");
       scheduler->block_worker_thread();
-      RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " woken up");
-//       RCUTILS_LOG_INFO("Worker woken up");
+//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " woken up");
       continue;
     }
 
-    RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " executing work");
+//     RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " executing work");
     ready_entity->execute_function();
 
     scheduler->mark_entity_as_executed(*ready_entity);
@@ -665,18 +407,6 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
     }
 
     scheduler->block_worker_thread_for(timeout);
-
-//     std::unique_lock lk(conditional_mutex);
-//     std::cv_status ret = work_ready_conditional.wait_for(lk, timeout);
-//
-//     switch (ret) {
-//       case std::cv_status::no_timeout:
-// //                     RCUTILS_LOG_INFO("spin_once_internal: Woken up by trigger");
-//         break;
-//       case std::cv_status::timeout:
-// //                     RCUTILS_LOG_INFO("spin_once_internal: Woken up by timeout");
-//         break;
-//     }
 
     ready_entity = scheduler->get_next_ready_entity();
 
@@ -773,7 +503,7 @@ EventsCBGExecutor::spin()
   std::vector<std::thread> threads;
   size_t thread_id = 0;
   {
-    std::lock_guard wait_lock{wait_mutex_};
+//     std::lock_guard wait_lock{wait_mutex_};
     for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
       auto func = std::bind(&EventsCBGExecutor::run, this, thread_id);
       threads.emplace_back(func);

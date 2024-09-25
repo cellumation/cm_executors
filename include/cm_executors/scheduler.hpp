@@ -116,10 +116,10 @@ public:
         {
             idle = true;
         }
-        else
-        {
-            throw std::runtime_error("Internal error, group marked as skipped, but work was ready");
-        }
+//         else
+//         {
+//             throw std::runtime_error("Internal error, group marked as skipped, but work was ready");
+//         }
     }
     std::mutex ready_mutex;
   private:
@@ -162,10 +162,10 @@ public:
   void callback_group_ready(CallbackGroupHandle *handle)
   {
       {
-         RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", "CallbackGroupHandle moved to ready");
+//          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", "CallbackGroupHandle moved to ready");
          std::lock_guard l(ready_callback_groups_mutex);
          ready_callback_groups.push_back(handle);
-         RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", ("Num ready CallbackGroupHandles : " + std::to_string(ready_callback_groups.size())).c_str());
+//          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", ("Num ready CallbackGroupHandles : " + std::to_string(ready_callback_groups.size())).c_str());
       }
 
       wakeup_one_worker_thread();
