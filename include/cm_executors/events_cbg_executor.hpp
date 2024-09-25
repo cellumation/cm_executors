@@ -225,6 +225,8 @@ protected:
 
   std::unique_ptr<CBGScheduler> scheduler;
 
+  std::thread rcl_polling_thread;
+
   struct CallbackGroupData
   {
     CallbackGroup::WeakPtr callback_group;
