@@ -25,7 +25,6 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp/memory_strategies.hpp"
 #include "rclcpp/visibility_control.hpp"
-#include "registered_entity_cache.hpp"
 
 namespace rclcpp
 {
@@ -33,6 +32,9 @@ namespace executors
 {
 
 class TimerManager;
+struct RegisteredEntityCache;
+class CBGScheduler;
+class GloablaWeakExecutableCache;
 
 class EventsCBGExecutor : public rclcpp::Executor
 {
