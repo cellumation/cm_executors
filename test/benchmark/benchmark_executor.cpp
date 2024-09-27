@@ -27,7 +27,7 @@
 using namespace std::chrono_literals;
 using performance_test_fixture::PerformanceTest;
 
-constexpr unsigned int kNumberOfNodes = 10;
+constexpr unsigned int kNumberOfNodes = 1;
 constexpr unsigned int kNumberOfPubSubs = 10;
 
 class PerformanceTestExecutor : public PerformanceTest
@@ -79,6 +79,7 @@ public:
     publishers[0]->publish(empty_msgs);
     executor.spin_some(100ms);
 
+//     RCUTILS_LOG_ERROR_NAMED ("rclcpp", "precompute done");
     if (callback_count == 0) {
       st.SkipWithError("No message was received");
     }
@@ -857,12 +858,12 @@ public:
 
 BENCHMARK_F(
   SharedPtrHolder,
-  shared_ptr_use_cnt)(benchmark::State & st)
+  weakptr_expired)(benchmark::State & st)
 {
   for (auto _ : st) {
     (void)_;
-    size_t cnt = shared_ptr.use_count();
-    benchmark::DoNotOptimize(cnt);
+    bool expired = weak_ptr.expired();
+    benchmark::DoNotOptimize(expired);
   }
 }
 
@@ -879,301 +880,20 @@ BENCHMARK_F(
   }
 }
 
-class Foo
-{
-public:
-  Foo(size_t i)
-  : num(i) {}
-  Foo()
-  : num(0) {}
-
-  ~Foo()
-  {
-  }
-
-  size_t num = 0;
-  std::shared_ptr<size_t> foo_ptr;
-  rclcpp::AnyExecutable exec;
-};
-
 BENCHMARK_F(
   SharedPtrHolder,
-  clear_std_vector)(benchmark::State & st)
+  weakt_upcast_invalid)(benchmark::State & st)
 {
-  const size_t size = 80;
-
-  std::vector<Foo> tmp;
-  tmp.reserve(size);
+  shared_ptr.reset();
 
   for (auto _ : st) {
     (void)_;
-    tmp.clear();
-    tmp.reserve(size);
 
-    for (size_t i = 0; i < size; i++) {
-      tmp.push_back(i);
-    }
+    std::shared_ptr<std::string> ptr = weak_ptr.lock();
+    benchmark::DoNotOptimize(ptr);
 
-    benchmark::DoNotOptimize(tmp);
   }
 }
-
-BENCHMARK_F(
-  SharedPtrHolder,
-  resize_zero_std_vector)(benchmark::State & st)
-{
-  const size_t size = 80;
-
-  std::vector<Foo> tmp;
-  tmp.reserve(size);
-
-  for (auto _ : st) {
-    (void)_;
-    tmp.resize(0);
-    tmp.reserve(size);
-
-    for (size_t i = 0; i < size; i++) {
-      tmp.push_back(i);
-    }
-
-    benchmark::DoNotOptimize(tmp);
-  }
-}
-
-using any_exec = std::variant<const rclcpp::SubscriptionBase::WeakPtr,
-    const rclcpp::TimerBase::WeakPtr,
-    const rclcpp::ServiceBase::WeakPtr, const rclcpp::ClientBase::WeakPtr,
-    const rclcpp::Waitable::WeakPtr, const rclcpp::GuardCondition::WeakPtr>;
-
-struct StupidVariant
-{
-  enum type
-  {
-    Subscription,
-    Service,
-    Timer,
-    Client,
-    Waitable,
-    GuardCondition,
-  };
-
-  type type;
-
-  std::weak_ptr<void> type_ptr;
-
-  StupidVariant(rclcpp::SubscriptionBase::WeakPtr ptr)
-  : type(Subscription),
-    type_ptr(std::move(ptr))
-  {
-  }
-
-  StupidVariant(rclcpp::TimerBase::WeakPtr ptr)
-  : type(Timer),
-    type_ptr(std::move(ptr))
-  {
-  }
-
-  template<class Executable>
-  std::shared_ptr<Executable> as_share_ptr() const
-  {
-    return std::static_pointer_cast<Executable>(type_ptr.lock());
-  }
-
-};
-
-BENCHMARK_F(
-  SharedPtrHolder,
-  variant_insert)(benchmark::State & st)
-{
-  rclcpp::init(0, nullptr);
-
-  rclcpp::Node node("FooNode");
-
-  const size_t size = 80;
-
-  std::vector<any_exec> tmp;
-
-  std::vector<rclcpp::SubscriptionBase::SharedPtr> ptrs;
-  ptrs.reserve(size);
-  for (size_t i = 0; i < size; i++) {
-    ptrs.emplace_back(
-      node.create_subscription<test_msgs::msg::Empty>(
-        "/foo" + std::to_string(i), rclcpp::QoS(10), [](const test_msgs::msg::Empty & /*msg*/) {}));
-  }
-
-  for (auto _ : st) {
-    (void)_;
-    tmp.clear();
-    tmp.reserve(size);
-
-    for (size_t i = 0; i < size; i++) {
-      tmp.emplace_back(ptrs[i]);
-    }
-  }
-  rclcpp::shutdown();
-}
-
-// BENCHMARK_F(SharedPtrHolder,
-//   push_ref)(benchmark::State & st)
-// {
-//     rclcpp::init(0, nullptr);
-//
-//     rclcpp::Node node("FooNode");
-//
-//     const size_t size = 80;
-//
-//     std::vector<any_exec> execs;
-//
-//     std::vector<rclcpp::SubscriptionBase::SharedPtr> ptrs;
-//     ptrs.reserve(size);
-//     for(size_t i = 0; i < size; i++ )
-//     {
-//        ptrs.emplace_back(node.create_subscription<test_msgs::msg::Empty>(
-//               "/foo" + std::to_string(i), rclcpp::QoS(10), [] (const test_msgs::msg::Empty &/*msg*/) {}));
-//     }
-//     execs.clear();
-//     execs.reserve(size);
-//
-//     for(size_t i = 0; i < size; i++ )
-//     {
-//         execs.emplace_back(ptrs[i]);
-//     }
-//     std::vector<rclcpp::executors::AnyRef> subscribers;
-//
-//     for (auto _ : st) {
-//     (void)_;
-//
-//       subscribers.clear();
-//       subscribers.reserve(size);
-//       for(size_t i = 0; i < size; i++ )
-//       {
-//         auto handle_shr_ptr = ptrs[i]->get_subscription_handle();
-//
-// //         subscribers.push_back(rclcpp::executors::SubscriberRef(ptrs[i], handle_shr_ptr , nullptr));
-//
-//       }
-//     }
-//
-//     rclcpp::shutdown();
-// }
-//
-// BENCHMARK_F(SharedPtrHolder,
-//   emplace_ref)(benchmark::State & st)
-// {
-//     rclcpp::init(0, nullptr);
-//
-//     rclcpp::Node node("FooNode");
-//
-//     const size_t size = 80;
-//
-//     std::vector<any_exec> execs;
-//
-//     std::vector<rclcpp::SubscriptionBase::SharedPtr> ptrs;
-//     ptrs.reserve(size);
-//     for(size_t i = 0; i < size; i++ )
-//     {
-//        ptrs.emplace_back(node.create_subscription<test_msgs::msg::Empty>(
-//               "/foo" + std::to_string(i), rclcpp::QoS(10), [] (const test_msgs::msg::Empty &/*msg*/) {}));
-//     }
-//     execs.clear();
-//     execs.reserve(size);
-//
-//     for(size_t i = 0; i < size; i++ )
-//     {
-//         execs.emplace_back(ptrs[i]);
-//     }
-//     std::vector<rclcpp::executors::AnyRef> subscribers;
-//
-//     for (auto _ : st) {
-//     (void)_;
-//
-//       subscribers.clear();
-//       subscribers.reserve(size);
-//       for(size_t i = 0; i < size; i++ )
-//       {
-//         auto handle_shr_ptr = ptrs[i]->get_subscription_handle();
-//
-// //         subscribers.emplace_back(rclcpp::executors::SubscriberRef(ptrs[i], handle_shr_ptr , nullptr));
-//
-//       }
-//     }
-//
-//     rclcpp::shutdown();
-// }
-BENCHMARK_F(
-  SharedPtrHolder,
-  switch_and_cast_insert)(benchmark::State & st)
-{
-  rclcpp::init(0, nullptr);
-
-  rclcpp::Node node("FooNode");
-
-  const size_t size = 80;
-
-  std::vector<StupidVariant> tmp;
-
-  std::vector<rclcpp::SubscriptionBase::SharedPtr> ptrs;
-  ptrs.reserve(size);
-  for (size_t i = 0; i < size; i++) {
-    ptrs.emplace_back(
-      node.create_subscription<test_msgs::msg::Empty>(
-        "/foo" + std::to_string(i), rclcpp::QoS(10), [](const test_msgs::msg::Empty & /*msg*/) {}));
-  }
-
-  for (auto _ : st) {
-    (void)_;
-    tmp.clear();
-    tmp.reserve(size);
-
-    for (size_t i = 0; i < size; i++) {
-      tmp.emplace_back(ptrs[i]);
-    }
-  }
-  rclcpp::shutdown();
-}
-
-BENCHMARK_F(
-  SharedPtrHolder,
-  stupid_variant_get)(benchmark::State & st)
-{
-  rclcpp::init(0, nullptr);
-
-  rclcpp::Node node("FooNode");
-
-  const size_t size = 80;
-
-  std::vector<StupidVariant> execs;
-
-  std::vector<rclcpp::SubscriptionBase::SharedPtr> ptrs;
-  ptrs.reserve(size);
-  for (size_t i = 0; i < size; i++) {
-    ptrs.emplace_back(
-      node.create_subscription<test_msgs::msg::Empty>(
-        "/foo" + std::to_string(i), rclcpp::QoS(10), [](const test_msgs::msg::Empty & /*msg*/) {}));
-  }
-  execs.clear();
-  execs.reserve(size);
-
-  for (size_t i = 0; i < size; i++) {
-    execs.emplace_back(ptrs[i]);
-  }
-
-
-  for (auto _ : st) {
-    (void)_;
-    for (size_t i = 0; i < size; i++) {
-
-      const rclcpp::SubscriptionBase::SharedPtr ref =
-        execs[i].as_share_ptr<rclcpp::SubscriptionBase>();
-
-      benchmark::DoNotOptimize(ref);
-
-    }
-  }
-
-  rclcpp::shutdown();
-}
-
 BENCHMARK_F(
   PerformanceTestExecutorSimple,
   static_single_thread_executor_spin_until_future_complete)(benchmark::State & st)
