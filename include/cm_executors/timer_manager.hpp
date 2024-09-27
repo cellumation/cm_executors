@@ -41,11 +41,13 @@ class TimerQueue
 
 public:
   TimerQueue(rcl_clock_type_t timer_type)
-  : timer_type(timer_type),
-    trigger_thread([this]() {
-        timer_thread();
-      })
+  : timer_type(timer_type)
   {
+    // must be initialized here so that all class members
+    // are initialized
+    trigger_thread = std::thread([this]() {
+        timer_thread();
+      });
   };
 
   ~TimerQueue()
