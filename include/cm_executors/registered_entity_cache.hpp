@@ -9,37 +9,33 @@ namespace executors
 {
 
 
-template<class ExecutableType_T>
-struct WeakExecutableWithScheduler
+template<class EntityType_T>
+struct WeakEntityPtrWithRemoveFunction
 {
-  WeakExecutableWithScheduler(
-    const std::shared_ptr<ExecutableType_T> & executable,
-    CallbackGroupSchedulerEv * scheduler)
-  : executable(executable), scheduler(scheduler)
+  WeakEntityPtrWithRemoveFunction(const std::shared_ptr<EntityType_T> & shr_ptr,
+    const std::function<void (const std::shared_ptr<EntityType_T> &ptr)> &destruction_callback) :
+    executable(shr_ptr),
+    ptr(shr_ptr.get()),
+    destruction_callback(destruction_callback)
   {
   }
 
-  using ExecutableType = ExecutableType_T;
-
-//  WeakExecutableWithRclHandle(WeakExecutableWithRclHandle &&) = default;
-/*
-   WeakExecutableWithRclHandle& operator= (const WeakExecutableWithRclHandle &) = delete;*/
-
-
-  std::weak_ptr<ExecutableType> executable;
-  CallbackGroupSchedulerEv * scheduler;
-
-  bool processed;
-
-  bool executable_alive()
+  ~WeakEntityPtrWithRemoveFunction()
   {
-    auto use_cnt = executable.use_count();
-    if (use_cnt == 0) {
-      return false;
+    std::shared_ptr<EntityType_T> shr_ptr = executable.lock();
+    if(shr_ptr)
+    {
+      destruction_callback(shr_ptr);
     }
-
-    return true;
   }
+
+  std::weak_ptr<EntityType_T> executable;
+
+  // May be used as key, to identify the removed element
+  // after the weak pointer went out of scope
+  EntityType_T *ptr;
+
+  std::function<void (const std::shared_ptr<EntityType_T> &ptr)> destruction_callback;
 };
 
 struct GuardConditionWithFunction
@@ -55,29 +51,70 @@ struct GuardConditionWithFunction
   std::function<void(void)> handle_guard_condition_fun;
 };
 
-using WeakTimerRef = WeakExecutableWithScheduler<rclcpp::TimerBase>;
+template<class EntityType_T>
+class EntityCache
+{
+  using CacheType = WeakEntityPtrWithRemoveFunction<EntityType_T>;
 
-using WeakSubscriberRef = WeakExecutableWithScheduler<rclcpp::SubscriptionBase>;
-using WeakClientRef = WeakExecutableWithScheduler<rclcpp::ClientBase>;
-using WeakServiceRef = WeakExecutableWithScheduler<rclcpp::ServiceBase>;
-using WeakWaitableRef = WeakExecutableWithScheduler<rclcpp::Waitable>;
+  std::unordered_map<const EntityType_T *, std::unique_ptr<CacheType>> entities;
+public:
+  void update(const std::vector<std::shared_ptr<EntityType_T>> &entityList,
+              const std::function<void (const std::shared_ptr<EntityType_T> &)> &on_add,
+              const std::function<void (const std::shared_ptr<EntityType_T> &)> &on_remove)
+  {
+    std::unordered_map<const EntityType_T *, std::unique_ptr<CacheType>> nextEntities;
+    for(const std::shared_ptr<EntityType_T> &shr_ptr : entityList)
+    {
+      auto it = entities.find(shr_ptr.get());
+      if(it != entities.end())
+      {
+        nextEntities.insert(entities.extract(it));
+      }
+      else
+      {
+        // new entry
+        nextEntities.emplace(std::make_pair(shr_ptr.get(), std::make_unique<CacheType>(shr_ptr, on_remove)));
 
+        on_add(shr_ptr);
+      }
+    }
+
+    entities.swap(nextEntities);
+
+    // NOTE, at this point the non moved unique_ptrs get destructed, and the
+    // remove callbacks are called
+  }
+
+  void clear()
+  {
+    entities.clear();
+  }
+
+};
 
 struct RegisteredEntityCache
 {
-    RegisteredEntityCache(CBGScheduler & scheduler, TimerManager & timer_manager, const rclcpp::CallbackGroup::SharedPtr & callback_group)
-  :
-  callback_group_weak_ptr(callback_group),
-  scheduler_cbg_handle(*scheduler.add_callback_group(callback_group)),
+  RegisteredEntityCache(CBGScheduler & scheduler, TimerManager & timer_manager, const rclcpp::CallbackGroup::SharedPtr & callback_group)
+  : callback_group_weak_ptr(callback_group),
+    scheduler_cbg_handle(*scheduler.add_callback_group(callback_group)),
     timer_manager(timer_manager)
   {
+    // register guard condition for the callback group with the handler
+    // this makes sure, that we pick up new entities in case the guard
+    // condition is triggered
+    add_guard_condition_event(
+      callback_group->get_notify_guard_condition(), [this]() {
+        handle_callback_group_guard_condition();
+      }
+    );
   }
 
-  std::vector<WeakTimerRef> timers;
-  std::vector<WeakSubscriberRef> subscribers;
-  std::vector<WeakClientRef> clients;
-  std::vector<WeakServiceRef> services;
-  std::vector<WeakWaitableRef> waitables;
+  EntityCache<rclcpp::TimerBase> timers_cache;
+  EntityCache<rclcpp::SubscriptionBase> subscribers_cache;
+  EntityCache<rclcpp::ClientBase> clients_cache;
+  EntityCache<rclcpp::ServiceBase> services_cache;
+  EntityCache<rclcpp::Waitable> waitables_cache;
+
   std::vector<GuardConditionWithFunction> guard_conditions;
 
   rclcpp::CallbackGroup::WeakPtr callback_group_weak_ptr;
@@ -85,142 +122,137 @@ struct RegisteredEntityCache
 
   TimerManager & timer_manager;
 
+  // This function will be called whenever the guard condition
+  // if the callback group was triggered. In this case, we
+  // query the callback group for added or removed entites
+  void handle_callback_group_guard_condition()
+  {
+      if (!rclcpp::contexts::get_global_default_context()->shutdown_reason().empty()) {
+        return;
+      }
+
+      if (!rclcpp::ok(rclcpp::contexts::get_global_default_context())) {
+        return;
+      }
+
+      if(!regenerate_events())
+      {
+      }
+  };
+
+
   ~RegisteredEntityCache()
   {
-    for (const auto & timer_ref : timers) {
-      auto shr_ptr = timer_ref.executable.lock();
-      if (shr_ptr) {
-        shr_ptr->clear_on_reset_callback();
-      }
-    }
-    for (const auto & timer_ref : subscribers) {
-      auto shr_ptr = timer_ref.executable.lock();
-      if (shr_ptr) {
-        shr_ptr->clear_on_new_message_callback();
-      }
-    }
-    for (const auto & timer_ref : clients) {
-      auto shr_ptr = timer_ref.executable.lock();
-      if (shr_ptr) {
-        shr_ptr->clear_on_new_response_callback();
-      }
-    }
-    for (const auto & timer_ref : services) {
-      auto shr_ptr = timer_ref.executable.lock();
-      if (shr_ptr) {
-        shr_ptr->clear_on_new_request_callback();
-      }
-    }
-    for (const auto & timer_ref : waitables) {
-      auto shr_ptr = timer_ref.executable.lock();
-      if (shr_ptr) {
-        shr_ptr->clear_on_ready_callback();
-      }
-    }
     for (const auto & gc_ref : guard_conditions) {
       gc_ref.guard_condition->set_on_trigger_callback(nullptr);
     }
   }
 
-  void clear()
+  void clear_caches()
   {
-    timers.clear();
-    subscribers.clear();
-    clients.clear();
-    services.clear();
-    waitables.clear();
-    guard_conditions.clear();
+    timers_cache.clear();
+    subscribers_cache.clear();
+    clients_cache.clear();
+    services_cache.clear();
+    waitables_cache.clear();
   }
 
 
   bool regenerate_events()
   {
-    clear();
-
-//     RCUTILS_LOG_ERROR_NAMED("RegisteredEntityCache", "FOOOOO regenerate_events");
-
     rclcpp::CallbackGroup::SharedPtr callback_group = callback_group_weak_ptr.lock();
 
     if(!callback_group)
     {
-        return false;
+      clear_caches();
+      return false;
     }
 
-    // we reserve to much memory here, this this should be fine
-    if (timers.capacity() == 0) {
-      timers.reserve(callback_group->size() );
-      subscribers.reserve(callback_group->size() );
-      clients.reserve(callback_group->size() );
-      services.reserve(callback_group->size() );
-      waitables.reserve(callback_group->size() );
-    }
+    std::vector<rclcpp::TimerBase::SharedPtr> timers;
+    std::vector<rclcpp::SubscriptionBase::SharedPtr> subscribers;
+    std::vector<rclcpp::ClientBase::SharedPtr> clients;
+    std::vector<rclcpp::ServiceBase::SharedPtr> services;
+    std::vector<rclcpp::Waitable::SharedPtr> waitables;
 
-    const auto add_sub = [this](const rclcpp::SubscriptionBase::SharedPtr & s) {
+    // we reserve to much memory here, but this should be fine
+    const size_t max_size = callback_group->size();
+    timers.reserve(max_size);
+    subscribers.reserve(max_size);
+    clients.reserve(max_size);
+    services.reserve(max_size);
+    waitables.reserve(max_size);
 
-        //element not found, add new one
-//       auto &entry = subscribers.emplace_back(WeakSubscriberRef(s, &scheduler));
-        s->set_on_new_message_callback(
-            scheduler_cbg_handle.get_ready_callback_for_entity(s));
-      };
-    const auto add_timer = [this](const rclcpp::TimerBase::SharedPtr & s) {
+    const auto add_sub = [&subscribers](const rclcpp::SubscriptionBase::SharedPtr & s) {
+      subscribers.push_back(s);
+    };
+    const auto add_timer = [&timers](const rclcpp::TimerBase::SharedPtr & s) {
+      timers.push_back(s);
+    };
+    const auto add_client = [&clients](const rclcpp::ClientBase::SharedPtr & s) {
+      clients.push_back(s);
+    };
+    const auto add_service = [&services](const rclcpp::ServiceBase::SharedPtr & s) {
+      services.push_back(s);
+    };
+    const auto add_waitable = [&waitables](const rclcpp::Waitable::SharedPtr & s) {
+      waitables.push_back(s);
+    };
 
-//         RCUTILS_LOG_ERROR_NAMED("RegisteredEntityCache", "add_timer called for callback group");
-
-        // we 'miss use'  this function, to make sure we don't add a timer two times
-        if(!s->exchange_in_use_by_wait_set_state(true))
-        {
-          timer_manager.add_timer(s, scheduler_cbg_handle.get_ready_callback_for_entity(s));
-        }
-      };
-
-    const auto add_client = [this](const rclcpp::ClientBase::SharedPtr & s) {
-        s->set_on_new_response_callback(scheduler_cbg_handle.get_ready_callback_for_entity(s));
-      };
-
-    const auto add_service = [this](const rclcpp::ServiceBase::SharedPtr & s) {
-        s->set_on_new_request_callback(scheduler_cbg_handle.get_ready_callback_for_entity(s));
-      };
-
-
-
-    const auto add_waitable = [this](const rclcpp::Waitable::SharedPtr & s) {
-        s->set_on_ready_callback(scheduler_cbg_handle.get_ready_callback_for_entity(s));
-      };
-
-    auto cbg_guard_condition_handler = [this]() {
-
-//             RCUTILS_LOG_ERROR_NAMED("rclcpp", "GC: Callback group was changed");
-
-        if (!rclcpp::contexts::get_global_default_context()->shutdown_reason().empty()) {
-          return;
-        }
-
-        if (!rclcpp::ok(rclcpp::contexts::get_global_default_context())) {
-          return;
-        }
-
-        if(!regenerate_events())
-        {
-            //FIXME remove ???
-        }
-      };
-
-    // We readd this function on every regen, as we just clear everything on every iterration
-    add_guard_condition_event(
-      callback_group->get_notify_guard_condition(), [cbg_guard_condition_handler, this]() {
-//             RCUTILS_LOG_INFO("Callback group nofity callback !!!!!!!!!!!!");
-
-          cbg_guard_condition_handler();
-      }
-    );
-
+    // populate all vectors
     callback_group->collect_all_ptrs(add_sub, add_service, add_client, add_timer, add_waitable);
 
-//     RCUTILS_LOG_ERROR_NAMED("rclcpp", "GC: regeneraetd, new size : t %lu, sub %lu, c %lu, s %lu, gc %lu, waitables %lu", wait_set_size.timers, wait_set_size.subscriptions, wait_set_size.clients, wait_set_size.services, wait_set_size.guard_conditions, waitables.size());
+    timers_cache.update(timers,
+      [this](const rclcpp::TimerBase::SharedPtr & s) {
+        timer_manager.add_timer(s, scheduler_cbg_handle.get_ready_callback_for_entity(s));
+      },
+      [this](const rclcpp::TimerBase::SharedPtr & s) {
+        timer_manager.remove_timer(s);
+    });
+
+    subscribers_cache.update(subscribers,
+      [this](const rclcpp::SubscriptionBase::SharedPtr & s) {
+        s->set_on_new_message_callback(
+          scheduler_cbg_handle.get_ready_callback_for_entity(s));
+      },
+      [] (const rclcpp::SubscriptionBase::SharedPtr & shr_ptr) {
+      shr_ptr->clear_on_new_message_callback();
+    });
+
+    clients_cache.update(clients,
+      [this](const rclcpp::ClientBase::SharedPtr & s) {
+        s->set_on_new_response_callback(
+          scheduler_cbg_handle.get_ready_callback_for_entity(s));
+      },
+      [] (const rclcpp::ClientBase::SharedPtr & shr_ptr) {
+      shr_ptr->clear_on_new_response_callback();
+    });
+    services_cache.update(services,
+      [this](const rclcpp::ServiceBase::SharedPtr & s) {
+        s->set_on_new_request_callback(
+          scheduler_cbg_handle.get_ready_callback_for_entity(s));
+      },
+      [] (const rclcpp::ServiceBase::SharedPtr & shr_ptr) {
+      shr_ptr->clear_on_new_request_callback();
+    });
+    waitables_cache.update(waitables,
+      [this](const rclcpp::Waitable::SharedPtr & s) {
+        s->set_on_ready_callback(
+          scheduler_cbg_handle.get_ready_callback_for_entity(s));
+      },
+      [] (const rclcpp::Waitable::SharedPtr & shr_ptr) {
+      shr_ptr->clear_on_ready_callback();
+    });
 
     return true;
   }
 
+  /**
+   * Register special case guard conditions.
+   * These guard conditions can be registered to a callback, that will
+   * be executed within the executor worker context on trigger.
+   *
+   * Note, there is currently no way, to deregister these guard conditions
+   */
   void add_guard_condition_event(
     rclcpp::GuardCondition::SharedPtr ptr,
     std::function<void(void)> fun)
