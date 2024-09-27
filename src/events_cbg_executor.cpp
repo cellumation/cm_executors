@@ -567,7 +567,7 @@ void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> excep
     }
   }
 
-  run(thread_id);
+  run(thread_id, exception_handler);
   for (auto & thread : threads) {
     thread.join();
   }
