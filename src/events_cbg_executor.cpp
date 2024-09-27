@@ -121,19 +121,19 @@ EventsCBGExecutor::EventsCBGExecutor(
       }
     });
 
-  rcl_polling_thread = std::thread([this]()
-  {
-
-    while (rclcpp::ok(this->context_))
-    {
-      // wait either forever, or until something signaled the rcl layer to wake up
-      auto res = wait_set_.wait();
-      RCUTILS_LOG_ERROR_NAMED ("rclcpp", "rcl Wait returned, waking scheduler  !");
-
-      // we need to wake up for some reason, signal the scheduler
-      interrupt_guard_condition_->trigger();
-    }
-  });
+//   rcl_polling_thread = std::thread([this]()
+//   {
+//
+//     while (rclcpp::ok(this->context_))
+//     {
+//       // wait either forever, or until something signaled the rcl layer to wake up
+//       auto res = wait_set_.wait();
+//       RCUTILS_LOG_ERROR_NAMED ("rclcpp", "rcl Wait returned, waking scheduler  !");
+//
+//       // we need to wake up for some reason, signal the scheduler
+//       interrupt_guard_condition_->trigger();
+//     }
+//   });
 }
 
 EventsCBGExecutor::~EventsCBGExecutor()
