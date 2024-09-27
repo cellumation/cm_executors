@@ -172,6 +172,10 @@ public:
 
 private:
 
+  /**
+   * Wakes the timer thread. Must be called under lock
+   * by mutex
+   */
   void wakeup_timer_thread()
   {
     if(used_clock_for_timers)
@@ -227,15 +231,16 @@ private:
       return;
     }
 
-    std::chrono::nanoseconds old_next_call_time(0);
-    if(!running_timers.empty())
+    bool wasEmpty = running_timers.empty();
+    std::chrono::nanoseconds old_next_call_time(-1);
+    if(!wasEmpty)
     {
       old_next_call_time = running_timers.begin()->first;
     }
 
     running_timers.emplace(next_call_time, timer_data);
 
-    if(old_next_call_time != running_timers.begin()->first)
+    if(wasEmpty || old_next_call_time != running_timers.begin()->first)
     {
       // the next wakeup is now earlier, wake up the timer thread so that it can pick up the timer
       wakeup_timer_thread();
@@ -268,13 +273,13 @@ private:
         running_timers.begin()->second->timer_ready_callback(
           [timer_data = running_timers.begin()->second, this] ()
           {
-            // Note, we have the gurantee, that the shared_ptr to this timer is
+            // Note, we have the guarantee, that the shared_ptr to this timer is
             // valid in case this callback is executed, as the executor holds a
             // reference to the timer during execution and at the time of this callback.
             // Therefore timer_data is valid.
             {
-            std::scoped_lock l(mutex);
-            add_timer_to_running_map(timer_data);
+              std::scoped_lock l(mutex);
+              add_timer_to_running_map(timer_data);
             }
 //             RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "Timer was executed, readding to map, waking timer_thread");
           }
@@ -315,6 +320,8 @@ private:
       if(used_clock_for_timers)
       {
         try {
+          used_clock_for_timers->wait_until_started();
+
 //           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "has running timer, using clock to sleep");
           used_clock_for_timers->sleep_until(rclcpp::Time(next_wakeup_time.count(), timer_type));
 //           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "sleep finished, or interrupted ");

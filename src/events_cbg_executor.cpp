@@ -30,6 +30,7 @@
 #include "rclcpp/node.hpp"
 #include <inttypes.h>
 #include <cm_executors/timer_manager.hpp>
+#include <cm_executors/registered_entity_cache.hpp>
 #include "FirstInFirstOutScheduler.hpp"
 
 namespace rclcpp::executors
