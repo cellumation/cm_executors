@@ -26,6 +26,7 @@ class TimerQueue
   {
     std::shared_ptr<const rcl_timer_t> rcl_ref;
     rclcpp::Clock::SharedPtr clock;
+    bool in_running_list = false;
     std::function<void(const std::function<void()> executed_cb)> timer_ready_callback;
   };
 
@@ -73,7 +74,6 @@ public:
    *
    * @param timer the timer to remove.
    */
-
   void remove_timer(const rclcpp::TimerBase::SharedPtr & timer)
   {
     rcl_clock_t * clock_type_of_timer;
@@ -150,7 +150,7 @@ public:
       return;
     }
 
-    std::unique_ptr<TimerData> data = std::make_unique<TimerData>(TimerData{std::move(handle), GetClockHelper::get_clock(*timer), std::move(timer_ready_callback)});
+    std::unique_ptr<TimerData> data = std::make_unique<TimerData>(TimerData{std::move(handle), GetClockHelper::get_clock(*timer), false, std::move(timer_ready_callback)});
 
     timer->set_on_reset_callback(
       [data_ptr = data.get(), this](size_t) {
@@ -221,8 +221,23 @@ private:
    * Computes the next call time of the timer.
    * readds the timer to the map of running timers
    */
-  void add_timer_to_running_map(const TimerData * timer_data)
+  void add_timer_to_running_map(TimerData * timer_data)
   {
+    // timer can already be in the running list, if
+    // e.g. reset was called on a running timer
+    if(timer_data->in_running_list)
+    {
+      for(auto it = running_timers.begin() ; it != running_timers.end(); it++)
+      {
+        if(it->second == timer_data)
+        {
+          running_timers.erase(it);
+          break;
+        }
+      }
+      timer_data->in_running_list = false;
+    }
+
     int64_t next_call_time;
 
     rcl_ret_t ret = rcl_timer_get_next_call_time(timer_data->rcl_ref.get(), &next_call_time);
@@ -239,6 +254,7 @@ private:
     }
 
     running_timers.emplace(next_call_time, timer_data);
+    timer_data->in_running_list = true;
 
     if(wasEmpty || old_next_call_time != running_timers.begin()->first)
     {
@@ -262,6 +278,7 @@ private:
       const rcl_timer_t * rcl_timer_ref = running_timers.begin()->second->rcl_ref.get();
       auto ret = rcl_timer_get_time_until_next_call(rcl_timer_ref, &time_until_call);
       if (ret == RCL_RET_TIMER_CANCELED) {
+        running_timers.begin()->second->in_running_list = false;
         running_timers.erase(running_timers.begin());
         continue;
       }
@@ -287,6 +304,7 @@ private:
 
         // remove timer from, running list, until it was executed
         // the scheduler will readd the timer after execution
+        running_timers.begin()->second->in_running_list = false;
         running_timers.erase(running_timers.begin());
 
         continue;
@@ -362,7 +380,7 @@ private:
 
   std::vector<std::unique_ptr<TimerData>> all_timers;
 
-  using TimerMap = std::multimap<std::chrono::nanoseconds, const TimerData *>;
+  using TimerMap = std::multimap<std::chrono::nanoseconds, TimerData *>;
   TimerMap running_timers;
 
   std::thread trigger_thread;
