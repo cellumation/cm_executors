@@ -116,6 +116,18 @@ public:
   void
   spin();
 
+  /**
+   * \sa rclcpp::Executor:spin() for more details
+   * \throws std::runtime_error when spin() called while already spinning
+   * @param exception_handler will be called for every exception in the processing threads
+   *
+   * The exception_handler can be called from multiple threads at the same time.
+   * The exception_handler shall rethrow the exception it if wants to terminate the program.
+   */
+  RCLCPP_PUBLIC
+  void
+  spin(std::function<void(const std::exception & e)> exception_handler);
+
   virtual void
   spin_once(std::chrono::nanoseconds timeout = std::chrono::nanoseconds(-1));
 
@@ -217,6 +229,9 @@ protected:
   RCLCPP_PUBLIC
   void
   run(size_t this_thread_number);
+
+  void
+  run(size_t this_thread_number, std::function<void(const std::exception & e)> exception_handler);
 
   std::unique_ptr<CBGScheduler> scheduler;
 

@@ -389,6 +389,35 @@ EventsCBGExecutor::run(size_t this_thread_number)
 //     RCUTILS_LOG_INFO("Stopping execution thread");
 }
 
+void
+EventsCBGExecutor::run(size_t this_thread_number, std::function<void(const std::exception & e)> exception_handler)
+{
+  (void) this_thread_number;
+
+  while (rclcpp::ok(this->context_) && spinning.load() ) {
+
+    sync_callback_groups();
+
+    auto ready_entity = scheduler->get_next_ready_entity();
+    if(!ready_entity)
+    {
+      scheduler->block_worker_thread();
+      continue;
+    }
+
+    try {
+      ready_entity->execute_function();
+    }
+    catch (const std::exception & e)
+    {
+      exception_handler(e);
+    }
+
+    scheduler->mark_entity_as_executed(*ready_entity);
+  }
+}
+
+
 void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
 {
   if (!rclcpp::ok(this->context_) || !spinning.load() ) {
@@ -506,8 +535,35 @@ EventsCBGExecutor::spin()
   {
 //     std::lock_guard wait_lock{wait_mutex_};
     for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
-      auto func = std::bind(&EventsCBGExecutor::run, this, thread_id);
-      threads.emplace_back(func);
+      threads.emplace_back([this, thread_id]()
+      {
+        run(thread_id);
+      });
+    }
+  }
+
+  run(thread_id);
+  for (auto & thread : threads) {
+    thread.join();
+  }
+}
+
+void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> exception_handler)
+{
+
+  if (spinning.exchange(true) ) {
+    throw std::runtime_error("spin() called while already spinning");
+  }
+  RCPPUTILS_SCOPE_EXIT(this->spinning.store(false); );
+  std::vector<std::thread> threads;
+  size_t thread_id = 0;
+  {
+    for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
+        threads.emplace_back([this, thread_id, exception_handler]()
+        {
+          run(thread_id, exception_handler);
+        }
+      );
     }
   }
 
