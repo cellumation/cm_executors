@@ -148,6 +148,8 @@ EventsCBGExecutor::~EventsCBGExecutor()
 
   remove_all_nodes_and_callback_groups();
 
+  callback_groups.clear();
+
   // Remove shutdown callback handle registered to Context
   if (!context_->remove_on_shutdown_callback(shutdown_callback_handle_) ) {
     RCUTILS_LOG_ERROR_NAMED(

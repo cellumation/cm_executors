@@ -63,7 +63,10 @@ public:
       std::scoped_lock l(mutex);
       wakeup_timer_thread();
     }
-    trigger_thread.join();
+    if(trigger_thread.joinable())
+    {
+      trigger_thread.join();
+    }
   }
 
   /**
@@ -81,7 +84,7 @@ public:
 
     std::shared_ptr<const rcl_timer_t> handle = timer->get_timer_handle();
 
-      if (rcl_timer_clock(
+    if (rcl_timer_clock(
         const_cast<rcl_timer_t *>(handle.get()),
         &clock_type_of_timer) != RCL_RET_OK)
     {
