@@ -139,7 +139,7 @@ EventsCBGExecutor::EventsCBGExecutor(
 EventsCBGExecutor::~EventsCBGExecutor()
 {
   //we need to shut down the timer manager first, as it might access the Schedulers
-  timer_manager.reset();
+  timer_manager->stop();
 
   // signal all processing threads to shut down
   spinning = false;
@@ -156,6 +156,8 @@ EventsCBGExecutor::~EventsCBGExecutor()
     rcl_reset_error();
   }
 
+  // now we may release the memory of the timer_manager, as we know no thread is working on it any more
+  timer_manager.reset();
 }
 
 void EventsCBGExecutor::remove_all_nodes_and_callback_groups()

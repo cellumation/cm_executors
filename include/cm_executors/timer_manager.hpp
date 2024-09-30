@@ -54,15 +54,16 @@ public:
   ~TimerQueue()
   {
     stop();
-
-    trigger_thread.join();
   }
 
   void stop()
   {
     running = false;
-    std::scoped_lock l(mutex);
-    wakeup_timer_thread();
+    {
+      std::scoped_lock l(mutex);
+      wakeup_timer_thread();
+    }
+    trigger_thread.join();
   }
 
   /**
