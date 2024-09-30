@@ -11,7 +11,7 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} SHARED
   src/events_cbg_executor.cpp
   src/global_event_id_provider.cpp
   src/FirstInFirstOutScheduler.cpp
