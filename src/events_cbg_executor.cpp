@@ -264,6 +264,9 @@ void EventsCBGExecutor::sync_callback_groups()
   if (!needs_callback_group_resync.exchange(false) ) {
     return;
   }
+
+  std::scoped_lock l(callback_groups_mutex);
+
 //   RCUTILS_LOG_ERROR_NAMED("rclcpp", "sync_callback_groups");
 
   std::vector<std::pair<CallbackGroupData *, rclcpp::CallbackGroup::SharedPtr>> cur_group_data;
@@ -723,12 +726,9 @@ EventsCBGExecutor::add_node(
   needs_callback_group_resync = true;
   scheduler->unblock_one_worker_thread();
 
-  {
-    std::lock_guard g(callback_groups_mutex);
 
-    if (!spinning) {
-      sync_callback_groups();
-    }
+  if (!spinning) {
+    sync_callback_groups();
   }
 }
 

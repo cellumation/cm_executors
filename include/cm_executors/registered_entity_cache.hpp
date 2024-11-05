@@ -68,7 +68,7 @@ public:
       auto it = entities.find(shr_ptr.get());
       if(it != entities.end())
       {
-        nextEntities.insert(entities.extract(it));
+        nextEntities.insert(std::move(entities.extract(it)));
       }
       else
       {
