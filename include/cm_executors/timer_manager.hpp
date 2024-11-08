@@ -96,9 +96,11 @@ public:
       return;
     }
 
-    timer->clear_on_reset_callback();
-
     std::scoped_lock l(mutex);
+
+    // clear the timer under lock, as the underlying rcl function
+    // is not thread safe
+    timer->clear_on_reset_callback();
 
     auto it = std::find_if(
       all_timers.begin(), all_timers.end(),
@@ -203,6 +205,13 @@ private:
   bool remove_if_dropped(const TimerData * timer_data)
   {
     if (timer_data->rcl_ref.unique()) {
+
+      //clear on reset callback
+      if(rcl_timer_set_on_reset_callback(timer_data->rcl_ref.get(), nullptr, nullptr) != RCL_RET_OK)
+      {
+        assert(false);
+      }
+
       // timer was deleted
       auto it = std::find_if(
         all_timers.begin(), all_timers.end(), [timer_data](const std::unique_ptr<TimerData> & e) {
