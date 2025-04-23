@@ -1,4 +1,5 @@
 find_package(ament_cmake_gtest REQUIRED)
+find_package(test_msgs REQUIRED)
 
 add_subdirectory(benchmark)
 
