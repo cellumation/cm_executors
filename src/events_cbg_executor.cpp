@@ -84,7 +84,7 @@ EventsCBGExecutor::EventsCBGExecutor(
   interrupt_guard_condition_(std::make_shared<rclcpp::GuardCondition>(options.context) ),
   shutdown_guard_condition_(std::make_shared<rclcpp::GuardCondition>(options.context) ),
   context_(options.context),
-  timer_manager(std::make_unique<TimerManager>()),
+  timer_manager(std::make_unique<TimerManager>(context_)),
   global_executable_cache(std::make_unique<GloablaWeakExecutableCache>() ),
   nodes_executable_cache(std::make_unique<GloablaWeakExecutableCache>() )
 {
