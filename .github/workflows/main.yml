@@ -8,7 +8,7 @@ jobs:
       image: rostooling/setup-ros-docker:ubuntu-noble-latest
     steps:
       - name: Build and run tests
-        uses: ros-tooling/action-ros-ci@0.7
+        uses: ros-tooling/action-ros-ci@0.4.4
         with:
           package-name: cm_executors
           target-ros2-distro: jazzy
