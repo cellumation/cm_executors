@@ -462,13 +462,12 @@ TYPED_TEST(TestExecutors, spinAll)
   executor.add_node(this->node);
 
   my_waitable->set_on_execute_callback([my_waitable]() {
-    RCUTILS_LOG_ERROR_NAMED("TestExecutors", "spinAll on_execute_callback called");
-    if(my_waitable->get_count() < 2)
-    {
-    RCUTILS_LOG_ERROR_NAMED("TestExecutors", "my_waitable trigger called");
+      RCUTILS_LOG_ERROR_NAMED("TestExecutors", "spinAll on_execute_callback called");
+      if(my_waitable->get_count() < 2) {
+        RCUTILS_LOG_ERROR_NAMED("TestExecutors", "my_waitable trigger called");
       // retrigger after collect, this
-      my_waitable->trigger();
-    }
+        my_waitable->trigger();
+      }
   });
 
   // trigger one time before the spin_all so the on_execute_callback
@@ -772,7 +771,7 @@ TYPED_TEST(TestExecutors, testService)
   bool gotCallback = false;
 
   auto service_cb = [&gotCallback](const std::shared_ptr<Service::Request>/*request*/,
-      std::shared_ptr<Service::Response>/*response*/)
+    std::shared_ptr<Service::Response>/*response*/)
     {
       gotCallback = true;
     };
@@ -849,7 +848,7 @@ TYPED_TEST(TestExecutors, addAfterSpin)
   bool gotCallback = false;
 
   auto service_cb = [&gotCallback](const std::shared_ptr<Service::Request>/*request*/,
-      std::shared_ptr<Service::Response>/*response*/)
+    std::shared_ptr<Service::Response>/*response*/)
     {
       gotCallback = true;
     };
@@ -1177,7 +1176,6 @@ TYPED_TEST(TestBusyWaiting, test_spin)
   // this should get the initial trigger, and the follow up from in the callback
   ASSERT_EQ(this->waitable->get_count(), 2u);
 }
-
 
 
 template<typename T>

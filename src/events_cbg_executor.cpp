@@ -74,8 +74,7 @@ EventsCBGExecutor::EventsCBGExecutor(
   const rclcpp::ExecutorOptions & options,
   size_t number_of_threads,
   std::chrono::nanoseconds next_exec_timeout)
-:
-  scheduler(std::make_unique<FirstInFirstOutScheduler>()),
+: scheduler(std::make_unique<FirstInFirstOutScheduler>()),
   next_exec_timeout_(next_exec_timeout),
   spinning(false),
   interrupt_guard_condition_(std::make_shared<rclcpp::GuardCondition>(options.context) ),
@@ -86,9 +85,9 @@ EventsCBGExecutor::EventsCBGExecutor(
   nodes_executable_cache(std::make_unique<GloablaWeakExecutableCache>() )
 {
 
-   global_executable_cache->add_guard_condition_event (
+  global_executable_cache->add_guard_condition_event (
         interrupt_guard_condition_,
-        std::function<void ( void ) >() );
+        std::function<void(void)>() );
 
   global_executable_cache->add_guard_condition_event(
     shutdown_guard_condition_, [this]() {
@@ -193,11 +192,9 @@ bool EventsCBGExecutor::execute_ready_executables_until(
 {
   bool found_work = false;
 
-  while(true)
-  {
+  while(true) {
     auto ready_entity = scheduler->get_next_ready_entity();
-    if(!ready_entity)
-    {
+    if(!ready_entity) {
       break;
     }
 
@@ -207,8 +204,7 @@ bool EventsCBGExecutor::execute_ready_executables_until(
 
     scheduler->mark_entity_as_executed(*ready_entity);
 
-    if(std::chrono::steady_clock::now() >= stop_time)
-    {
+    if(std::chrono::steady_clock::now() >= stop_time) {
       break;
     }
   }
@@ -219,17 +215,15 @@ bool EventsCBGExecutor::execute_ready_executables_until(
 }
 
 bool EventsCBGExecutor::execute_previous_ready_executables_until(
-    const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
+  const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
 {
   bool found_work = false;
 
   const uint64_t last_ready_id = GlobalEventIdProvider::get_last_id();
 
-  while(true)
-  {
+  while(true) {
     auto ready_entity = scheduler->get_next_ready_entity(last_ready_id);
-    if(!ready_entity)
-    {
+    if(!ready_entity) {
       break;
     }
 
@@ -239,15 +233,13 @@ bool EventsCBGExecutor::execute_previous_ready_executables_until(
 
     scheduler->mark_entity_as_executed(*ready_entity);
 
-    if(std::chrono::steady_clock::now() >= stop_time)
-    {
+    if(std::chrono::steady_clock::now() >= stop_time) {
       break;
     }
   }
 
   return found_work;
 }
-
 
 
 size_t
@@ -306,7 +298,8 @@ void EventsCBGExecutor::sync_callback_groups()
 //         RCUTILS_LOG_INFO("Using new callback group");
 
       CallbackGroupData new_entry;
-      new_entry.registered_entities = std::make_unique<RegisteredEntityCache>(*scheduler, *timer_manager, cbg);
+      new_entry.registered_entities = std::make_unique<RegisteredEntityCache>(*scheduler,
+        *timer_manager, cbg);
       new_entry.callback_group = cbg;
       new_entry.registered_entities->regenerate_events();
       next_group_data.push_back(std::move(new_entry) );
@@ -376,8 +369,7 @@ EventsCBGExecutor::run(size_t this_thread_number)
     sync_callback_groups();
 
     auto ready_entity = scheduler->get_next_ready_entity();
-    if(!ready_entity)
-    {
+    if(!ready_entity) {
 //       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"), "Worker found no work. thread " << std::this_thread::get_id() << " going to sleep");
       scheduler->block_worker_thread();
 //       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " woken up");
@@ -394,7 +386,9 @@ EventsCBGExecutor::run(size_t this_thread_number)
 }
 
 void
-EventsCBGExecutor::run(size_t this_thread_number, std::function<void(const std::exception & e)> exception_handler)
+EventsCBGExecutor::run(
+  size_t this_thread_number,
+  std::function<void(const std::exception & e)> exception_handler)
 {
   (void) this_thread_number;
 
@@ -403,17 +397,14 @@ EventsCBGExecutor::run(size_t this_thread_number, std::function<void(const std::
     sync_callback_groups();
 
     auto ready_entity = scheduler->get_next_ready_entity();
-    if(!ready_entity)
-    {
+    if(!ready_entity) {
       scheduler->block_worker_thread();
       continue;
     }
 
     try {
       ready_entity->execute_function();
-    }
-    catch (const std::exception & e)
-    {
+    } catch (const std::exception & e) {
       exception_handler(e);
     }
 
@@ -429,8 +420,7 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
   }
 
   auto ready_entity = scheduler->get_next_ready_entity();
-  if(!ready_entity)
-  {
+  if(!ready_entity) {
 //             RCUTILS_LOG_INFO("spin_once_internal: No work, going to sleep");
 
     if (timeout < std::chrono::nanoseconds::zero()) {
@@ -444,7 +434,7 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
 
     ready_entity = scheduler->get_next_ready_entity();
 
-    if (!ready_entity ) {
+    if (!ready_entity) {
 //                 RCUTILS_LOG_INFO("spin_once_internal: Still no work, return (timeout ?)");
       return;
     }
@@ -540,8 +530,8 @@ EventsCBGExecutor::spin()
 //     std::lock_guard wait_lock{wait_mutex_};
     for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
       threads.emplace_back([this, thread_id]()
-      {
-        run(thread_id);
+        {
+          run(thread_id);
       });
     }
   }
@@ -563,7 +553,7 @@ void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> excep
   size_t thread_id = 0;
   {
     for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
-        threads.emplace_back([this, thread_id, exception_handler]()
+      threads.emplace_back([this, thread_id, exception_handler]()
         {
           run(thread_id, exception_handler);
         }

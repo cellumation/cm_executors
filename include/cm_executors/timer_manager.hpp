@@ -55,8 +55,7 @@ public:
           std::unique_lock lock(pred_mutex_);
           shutdown_ = true;
         }
-        if(clock_)
-        {
+        if(clock_) {
           clock_->notify_one();
         }
     });
@@ -78,8 +77,7 @@ public:
           " mutex returned by this->mutex()");
     }
 
-    if(shutdown_)
-    {
+    if(shutdown_) {
       return false;
     }
 
@@ -97,8 +95,7 @@ public:
   void
   notify_one()
   {
-    if(clock_)
-    {
+    if(clock_) {
       clock_->notify_one();
     }
   }
@@ -129,8 +126,8 @@ class TimerQueue
 
   class GetClockHelper : public rclcpp::TimerBase
   {
-  public:
-    static rclcpp::Clock::SharedPtr get_clock(const rclcpp::TimerBase &timer)
+public:
+    static rclcpp::Clock::SharedPtr get_clock(const rclcpp::TimerBase & timer)
     {
       // SUPER ugly hack, but we need the correct clock
       return static_cast<const GetClockHelper *>(&timer)->clock_;
@@ -138,15 +135,15 @@ class TimerQueue
   };
 
 public:
-  TimerQueue(rcl_clock_type_t timer_type, const rclcpp::Context::SharedPtr &context)
+  TimerQueue(rcl_clock_type_t timer_type, const rclcpp::Context::SharedPtr & context)
   : timer_type(timer_type), clock_waiter(context)
   {
     // must be initialized here so that all class members
     // are initialized
     trigger_thread = std::thread([this]() {
-        timer_thread();
+          timer_thread();
       });
-  };
+  }
 
   ~TimerQueue()
   {
@@ -160,8 +157,7 @@ public:
       std::scoped_lock l(mutex);
       wakeup_timer_thread();
     }
-    if(trigger_thread.joinable())
-    {
+    if(trigger_thread.joinable()) {
       trigger_thread.join();
     }
   }
@@ -214,8 +210,7 @@ public:
           return e.second == data_ptr;
         });
 
-      if(it2 != running_timers.end())
-      {
+      if(it2 != running_timers.end()) {
         running_timers.erase(it2);
       }
       all_timers.erase(it);
@@ -253,13 +248,13 @@ public:
       return;
     }
 
-    std::unique_ptr<TimerData> data = std::make_unique<TimerData>(TimerData{std::move(handle), GetClockHelper::get_clock(*timer), false, std::move(timer_ready_callback)});
+    std::unique_ptr<TimerData> data = std::make_unique<TimerData>(TimerData{std::move(handle),
+          GetClockHelper::get_clock(*timer), false, std::move(timer_ready_callback)});
 
     timer->set_on_reset_callback(
       [data_ptr = data.get(), this](size_t) {
         std::scoped_lock l(mutex);
-        if (!remove_if_dropped(data_ptr))
-        {
+        if (!remove_if_dropped(data_ptr)) {
           add_timer_to_running_map(data_ptr);
         }
       });
@@ -274,24 +269,20 @@ public:
   }
 
 private:
-
   /**
    * Wakes the timer thread. Must be called under lock
    * by mutex
    */
   void wakeup_timer_thread()
   {
-    if(used_clock_for_timers)
-    {
+    if(used_clock_for_timers) {
       {
         std::unique_lock<std::mutex> l(clock_waiter.mutex());
         wake_up = true;
       }
 //       RCUTILS_LOG_ERROR_NAMED("cm_executors::wakeup_timer_thread", "Cancleing sleep on clock");
       clock_waiter.notify_one();
-    }
-    else
-    {
+    } else {
 //       RCUTILS_LOG_ERROR_NAMED("cm_executors::wakeup_timer_thread", "thread_conditional.notify_all()");
       thread_conditional.notify_all();
     }
@@ -308,7 +299,8 @@ private:
     if (timer_data->rcl_ref.unique()) {
 
       //clear on reset callback
-      if(rcl_timer_set_on_reset_callback(timer_data->rcl_ref.get(), nullptr, nullptr) != RCL_RET_OK)
+      if(rcl_timer_set_on_reset_callback(timer_data->rcl_ref.get(), nullptr,
+          nullptr) != RCL_RET_OK)
       {
         assert(false);
       }
@@ -339,12 +331,9 @@ private:
   {
     // timer can already be in the running list, if
     // e.g. reset was called on a running timer
-    if(timer_data->in_running_list)
-    {
-      for(auto it = running_timers.begin() ; it != running_timers.end(); it++)
-      {
-        if(it->second == timer_data)
-        {
+    if(timer_data->in_running_list) {
+      for(auto it = running_timers.begin() ; it != running_timers.end(); it++) {
+        if(it->second == timer_data) {
           running_timers.erase(it);
           break;
         }
@@ -362,16 +351,14 @@ private:
 
     bool wasEmpty = running_timers.empty();
     std::chrono::nanoseconds old_next_call_time(-1);
-    if(!wasEmpty)
-    {
+    if(!wasEmpty) {
       old_next_call_time = running_timers.begin()->first;
     }
 
     running_timers.emplace(next_call_time, timer_data);
     timer_data->in_running_list = true;
 
-    if(wasEmpty || old_next_call_time != running_timers.begin()->first)
-    {
+    if(wasEmpty || old_next_call_time != running_timers.begin()->first) {
       // the next wakeup is now earlier, wake up the timer thread so that it can pick up the timer
       wakeup_timer_thread();
     }
@@ -381,8 +368,7 @@ private:
   {
     while (!running_timers.empty()) {
 
-      if(remove_if_dropped(running_timers.begin()->second))
-      {
+      if(remove_if_dropped(running_timers.begin()->second)) {
         running_timers.erase(running_timers.begin());
         continue;
       }
@@ -422,9 +408,7 @@ private:
         running_timers.erase(running_timers.begin());
 
         continue;
-      }
-      else
-      {
+      } else {
 //         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "Timer NOT ready, next call time is %+" PRId64 , running_timers.begin()->first.count());
       }
       break;
@@ -439,39 +423,36 @@ private:
         std::scoped_lock l(mutex);
         call_ready_timer_callbacks();
 
-        if(running_timers.empty())
-        {
+        if(running_timers.empty()) {
           used_clock_for_timers.reset();
-        }
-        else
-        {
+        } else {
           used_clock_for_timers = running_timers.begin()->second->clock;
           next_wakeup_time = running_timers.begin()->first;
         }
       }
-      if(used_clock_for_timers)
-      {
+      if(used_clock_for_timers) {
         try {
           used_clock_for_timers->wait_until_started();
 
 //           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "has running timer, using clock to sleep");
           std::unique_lock<std::mutex> l(clock_waiter.mutex());
-          clock_waiter.wait_until(l, used_clock_for_timers, rclcpp::Time(next_wakeup_time.count(), timer_type), [this] () -> bool {return wake_up || !running || !rclcpp::ok();});
+          clock_waiter.wait_until(l, used_clock_for_timers,
+              rclcpp::Time(next_wakeup_time.count(), timer_type), [this] () -> bool {
+              return wake_up || !running || !rclcpp::ok();
+                                                                                                                                 });
           wake_up = false;
 //           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "sleep finished, or interrupted ");
         } catch (const std::runtime_error &) {
           //there is a race on shutdown, were the context may become invalid, while we call sleep_until
           running = false;
         }
-      }
-      else
-      {
+      } else {
 //         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "no running timer, waiting on thread_conditional");
         std::unique_lock l(mutex);
         thread_conditional.wait(l, [this]() {
 
 //           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "thread_conditional: signal received : evaluation wakeup");
-          return !running_timers.empty() || !running || !rclcpp::ok();
+            return !running_timers.empty() || !running || !rclcpp::ok();
 
         });
 //         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "woken up");
@@ -507,8 +488,9 @@ class TimerManager
   std::array<TimerQueue, 3> timer_queues;
 
 public:
-  TimerManager(const rclcpp::Context::SharedPtr &context)
-  : timer_queues{TimerQueue{RCL_ROS_TIME, context}, TimerQueue{RCL_SYSTEM_TIME, context}, TimerQueue{RCL_STEADY_TIME, context}}
+  TimerManager(const rclcpp::Context::SharedPtr & context)
+  : timer_queues{TimerQueue{RCL_ROS_TIME, context}, TimerQueue{RCL_SYSTEM_TIME, context},
+      TimerQueue{RCL_STEADY_TIME, context}}
   {
 
   }

@@ -31,7 +31,6 @@ class TimerManager;
 struct GloablaWeakExecutableCache;
 
 
-
 class CBGScheduler
 {
 public:
@@ -63,39 +62,42 @@ public:
 
   struct CallbackGroupHandle
   {
-    CallbackGroupHandle(CBGScheduler &scheduler) : scheduler(scheduler) {};
+    CallbackGroupHandle(CBGScheduler & scheduler)
+    : scheduler(scheduler) {}
 
     virtual ~CallbackGroupHandle() = default;
 
-    virtual std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::SubscriptionBase::WeakPtr & entity) = 0;
-    virtual std::function<void(std::function<void()> executed_callback)> get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity) = 0;
-    virtual std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::ClientBase::WeakPtr & entity) = 0;
-    virtual std::function<void(size_t)> get_ready_callback_for_entity(const rclcpp::ServiceBase::WeakPtr & entity) = 0;
-    virtual std::function<void(size_t, int)> get_ready_callback_for_entity(const rclcpp::Waitable::WeakPtr & entity) = 0;
-    virtual std::function<void(size_t)> get_ready_callback_for_entity(const CallbackEventType & entity) = 0;
+    virtual std::function<void(size_t)> get_ready_callback_for_entity(
+      const rclcpp::SubscriptionBase::WeakPtr & entity) = 0;
+    virtual std::function<void(std::function<void()> executed_callback)>
+    get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity) = 0;
+    virtual std::function<void(size_t)> get_ready_callback_for_entity(
+      const rclcpp::ClientBase::WeakPtr & entity) = 0;
+    virtual std::function<void(size_t)> get_ready_callback_for_entity(
+      const rclcpp::ServiceBase::WeakPtr & entity) = 0;
+    virtual std::function<void(size_t,
+      int)> get_ready_callback_for_entity(const rclcpp::Waitable::WeakPtr & entity) = 0;
+    virtual std::function<void(size_t)> get_ready_callback_for_entity(
+      const CallbackEventType & entity) = 0;
 
     void mark_as_executed()
     {
-        std::lock_guard l(ready_mutex);
-        not_ready = false;
+      std::lock_guard l(ready_mutex);
+      not_ready = false;
 
-        if(!has_ready_entities())
-        {
-            idle = true;
-        }
-        else
-        {
+      if(!has_ready_entities()) {
+        idle = true;
+      } else {
             // inform scheduler that we have more work
-            scheduler.callback_group_ready(this);
-        }
+        scheduler.callback_group_ready(this);
+      }
     }
-
 
 
     bool is_ready();
 
-  protected:
-    CBGScheduler &scheduler;
+protected:
+    CBGScheduler & scheduler;
 
     /**
      * Will always be called under lock of ready_mutex
@@ -111,31 +113,29 @@ public:
     */
     void check_move_to_ready()
     {
-        if(not_ready)
-        {
-            return;
-        }
+      if(not_ready) {
+        return;
+      }
 
-        if(idle)
-        {
-            scheduler.callback_group_ready(this);
-            idle = false;
-        }
+      if(idle) {
+        scheduler.callback_group_ready(this);
+        idle = false;
+      }
     }
 
     void mark_as_skiped()
     {
-        if(!has_ready_entities())
-        {
-            idle = true;
-        }
+      if(!has_ready_entities()) {
+        idle = true;
+      }
 //         else
 //         {
 //             throw std::runtime_error("Internal error, group marked as skipped, but work was ready");
 //         }
     }
     std::mutex ready_mutex;
-  private:
+
+private:
     // will be set if cbg is mutual exclusive and something is executing
     bool not_ready = false;
 
@@ -151,38 +151,41 @@ public:
     CallbackGroupHandle *callback_handle = nullptr;
   };
 
-  CallbackGroupHandle* add_callback_group(const rclcpp::CallbackGroup::SharedPtr &callback_group)
+  CallbackGroupHandle * add_callback_group(const rclcpp::CallbackGroup::SharedPtr & callback_group)
   {
-      auto uPtr = get_handle_for_callback_group(callback_group);
-      CallbackGroupHandle* ret = uPtr.get();
+    auto uPtr = get_handle_for_callback_group(callback_group);
+    CallbackGroupHandle * ret = uPtr.get();
 
-      std::lock_guard lk(ready_callback_groups_mutex);
+    std::lock_guard lk(ready_callback_groups_mutex);
 
-      callback_groups.push_back(std::move(uPtr));
-      return ret;
-  };
+    callback_groups.push_back(std::move(uPtr));
+    return ret;
+  }
 
   void remove_callback_group(const CallbackGroupHandle *callback_handle)
   {
     std::lock_guard lk(ready_callback_groups_mutex);
-    ready_callback_groups.erase(std::find(ready_callback_groups.begin(), ready_callback_groups.end(), callback_handle));
+    ready_callback_groups.erase(std::find(ready_callback_groups.begin(),
+          ready_callback_groups.end(), callback_handle));
 
-    callback_groups.remove_if([&callback_handle] (const auto &e) { return e.get() == callback_handle;});
-  };
+    callback_groups.remove_if([&callback_handle] (const auto & e) {
+        return e.get() == callback_handle;
+                                                                                                     });
+  }
 
   // Will be called, by CallbackGroupHandle if any entity in the cb group is ready for execution
   // and the cb group was idle before
   void callback_group_ready(CallbackGroupHandle *handle)
   {
-      {
+    {
 //          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", "CallbackGroupHandle moved to ready");
-         std::lock_guard l(ready_callback_groups_mutex);
-         ready_callback_groups.push_back(handle);
+      std::lock_guard l(ready_callback_groups_mutex);
+      ready_callback_groups.push_back(handle);
 //          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", ("Num ready CallbackGroupHandles : " + std::to_string(ready_callback_groups.size())).c_str());
-      }
+    }
 
-      wakeup_one_worker_thread();
-  };
+    wakeup_one_worker_thread();
+  }
 
 
   /**
@@ -192,20 +195,20 @@ public:
    * will be called afterwards.
    */
   virtual std::optional<ExecutableEntity> get_next_ready_entity() = 0;
-  virtual std::optional<ExecutableEntity> get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id) = 0;
+  virtual std::optional<ExecutableEntity> get_next_ready_entity(
+    GlobalEventIdProvider::MonotonicId max_id) = 0;
 
   /**
    * Must be called, after a entity was executed. This function will
    * normally be used, to mark the associated callback group as ready
    * again.
    */
-  void mark_entity_as_executed(const ExecutableEntity &e)
+  void mark_entity_as_executed(const ExecutableEntity & e)
   {
-      if(e.callback_handle)
-      {
-          e.callback_handle->mark_as_executed();
-      }
-  };
+    if(e.callback_handle) {
+      e.callback_handle->mark_as_executed();
+    }
+  }
 
   /**
    * This function inserts a dummy event into the scheduler, so
@@ -216,42 +219,48 @@ public:
    */
   void unblock_one_worker_thread()
   {
-      {
-        std::lock_guard lk(ready_callback_groups_mutex);
-        release_worker_once = true;
-      }
-      work_ready_conditional.notify_one();
+    {
+      std::lock_guard lk(ready_callback_groups_mutex);
+      release_worker_once = true;
+    }
+    work_ready_conditional.notify_one();
   }
 
   void block_worker_thread()
   {
     std::unique_lock lk(ready_callback_groups_mutex);
-    work_ready_conditional.wait(lk, [this]() -> bool { return !ready_callback_groups.empty() || release_worker_once || release_workers; });
+    work_ready_conditional.wait(lk, [this]() -> bool {
+        return !ready_callback_groups.empty() || release_worker_once || release_workers;
+                                                                                                                                      });
     release_worker_once = false;
-  };
+  }
 
   void block_worker_thread_for(std::chrono::nanoseconds timeout)
   {
     std::unique_lock lk(ready_callback_groups_mutex);
-    work_ready_conditional.wait_for(lk, timeout, [this]() -> bool { return !ready_callback_groups.empty() || release_worker_once || release_workers; });
+    work_ready_conditional.wait_for(lk, timeout, [this]() -> bool {
+        return !ready_callback_groups.empty() || release_worker_once || release_workers;
+                                                                                                                                                   });
     release_worker_once = false;
-  };
+  }
 
   void wakeup_one_worker_thread()
   {
-      work_ready_conditional.notify_one();
+    work_ready_conditional.notify_one();
   }
 
   void release_all_worker_threads()
   {
-      {
-          std::lock_guard lk(ready_callback_groups_mutex);
-          release_workers = true;
-      }
-      work_ready_conditional.notify_all();
+    {
+      std::lock_guard lk(ready_callback_groups_mutex);
+      release_workers = true;
+    }
+    work_ready_conditional.notify_all();
   }
+
 protected:
-  virtual std::unique_ptr<CallbackGroupHandle> get_handle_for_callback_group(const rclcpp::CallbackGroup::SharedPtr &callback_group) = 0;
+  virtual std::unique_ptr<CallbackGroupHandle> get_handle_for_callback_group(
+    const rclcpp::CallbackGroup::SharedPtr & callback_group) = 0;
 
 
   std::mutex ready_callback_groups_mutex;

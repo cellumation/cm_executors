@@ -25,7 +25,6 @@ class GlobalEventIdProvider
   static std::atomic<uint64_t> last_event_id;
 
 public:
-
   using MonotonicId = uint64_t;
 
   // Returns the last id, returnd by getNextId
@@ -37,7 +36,7 @@ public:
   // increases the Id by one and returns the Id
   static uint64_t get_next_id()
   {
-    return (++last_event_id);
+    return  ++last_event_id;
   }
 };
 }

@@ -25,9 +25,10 @@ namespace executors
 template<class EntityType_T>
 struct WeakEntityPtrWithRemoveFunction
 {
-  WeakEntityPtrWithRemoveFunction(const std::shared_ptr<EntityType_T> & shr_ptr,
-    const std::function<void (const std::shared_ptr<EntityType_T> &ptr)> &destruction_callback) :
-    executable(shr_ptr),
+  WeakEntityPtrWithRemoveFunction(
+    const std::shared_ptr<EntityType_T> & shr_ptr,
+    const std::function<void(const std::shared_ptr<EntityType_T> & ptr)> & destruction_callback)
+  :executable(shr_ptr),
     ptr(shr_ptr.get()),
     destruction_callback(destruction_callback)
   {
@@ -36,8 +37,7 @@ struct WeakEntityPtrWithRemoveFunction
   ~WeakEntityPtrWithRemoveFunction()
   {
     std::shared_ptr<EntityType_T> shr_ptr = executable.lock();
-    if(shr_ptr)
-    {
+    if(shr_ptr) {
       destruction_callback(shr_ptr);
     }
   }
@@ -48,7 +48,7 @@ struct WeakEntityPtrWithRemoveFunction
   // after the weak pointer went out of scope
   EntityType_T *ptr;
 
-  std::function<void (const std::shared_ptr<EntityType_T> &ptr)> destruction_callback;
+  std::function<void(const std::shared_ptr<EntityType_T> & ptr)> destruction_callback;
 };
 
 struct GuardConditionWithFunction
@@ -70,23 +70,22 @@ class EntityCache
   using CacheType = WeakEntityPtrWithRemoveFunction<EntityType_T>;
 
   std::unordered_map<const EntityType_T *, std::unique_ptr<CacheType>> entities;
+
 public:
-  void update(const std::vector<std::shared_ptr<EntityType_T>> &entityList,
-              const std::function<void (const std::shared_ptr<EntityType_T> &)> &on_add,
-              const std::function<void (const std::shared_ptr<EntityType_T> &)> &on_remove)
+  void update(
+    const std::vector<std::shared_ptr<EntityType_T>> & entityList,
+    const std::function<void(const std::shared_ptr<EntityType_T> &)> & on_add,
+    const std::function<void(const std::shared_ptr<EntityType_T> &)> & on_remove)
   {
     std::unordered_map<const EntityType_T *, std::unique_ptr<CacheType>> nextEntities;
-    for(const std::shared_ptr<EntityType_T> &shr_ptr : entityList)
-    {
+    for(const std::shared_ptr<EntityType_T> & shr_ptr : entityList) {
       auto it = entities.find(shr_ptr.get());
-      if(it != entities.end())
-      {
+      if(it != entities.end()) {
         nextEntities.insert(std::move(entities.extract(it)));
-      }
-      else
-      {
+      } else {
         // new entry
-        nextEntities.emplace(std::make_pair(shr_ptr.get(), std::make_unique<CacheType>(shr_ptr, on_remove)));
+        nextEntities.emplace(std::make_pair(shr_ptr.get(),
+              std::make_unique<CacheType>(shr_ptr, on_remove)));
 
         on_add(shr_ptr);
       }
@@ -107,7 +106,9 @@ public:
 
 struct RegisteredEntityCache
 {
-  RegisteredEntityCache(CBGScheduler & scheduler, TimerManager & timer_manager, const rclcpp::CallbackGroup::SharedPtr & callback_group)
+  RegisteredEntityCache(
+    CBGScheduler & scheduler, TimerManager & timer_manager,
+    const rclcpp::CallbackGroup::SharedPtr & callback_group)
   : callback_group_weak_ptr(callback_group),
     scheduler_cbg_handle(*scheduler.add_callback_group(callback_group)),
     timer_manager(timer_manager)
@@ -140,18 +141,17 @@ struct RegisteredEntityCache
   // query the callback group for added or removed entites
   void handle_callback_group_guard_condition()
   {
-      if (!rclcpp::contexts::get_global_default_context()->shutdown_reason().empty()) {
-        return;
-      }
+    if (!rclcpp::contexts::get_global_default_context()->shutdown_reason().empty()) {
+      return;
+    }
 
-      if (!rclcpp::ok(rclcpp::contexts::get_global_default_context())) {
-        return;
-      }
+    if (!rclcpp::ok(rclcpp::contexts::get_global_default_context())) {
+      return;
+    }
 
-      if(!regenerate_events())
-      {
-      }
-  };
+    if(!regenerate_events()) {
+    }
+  }
 
 
   ~RegisteredEntityCache()
@@ -175,8 +175,7 @@ struct RegisteredEntityCache
   {
     rclcpp::CallbackGroup::SharedPtr callback_group = callback_group_weak_ptr.lock();
 
-    if(!callback_group)
-    {
+    if(!callback_group) {
       clear_caches();
       return false;
     }
@@ -196,20 +195,20 @@ struct RegisteredEntityCache
     waitables.reserve(max_size);
 
     const auto add_sub = [&subscribers](const rclcpp::SubscriptionBase::SharedPtr & s) {
-      subscribers.push_back(s);
-    };
+        subscribers.push_back(s);
+      };
     const auto add_timer = [&timers](const rclcpp::TimerBase::SharedPtr & s) {
-      timers.push_back(s);
-    };
+        timers.push_back(s);
+      };
     const auto add_client = [&clients](const rclcpp::ClientBase::SharedPtr & s) {
-      clients.push_back(s);
-    };
+        clients.push_back(s);
+      };
     const auto add_service = [&services](const rclcpp::ServiceBase::SharedPtr & s) {
-      services.push_back(s);
-    };
+        services.push_back(s);
+      };
     const auto add_waitable = [&waitables](const rclcpp::Waitable::SharedPtr & s) {
-      waitables.push_back(s);
-    };
+        waitables.push_back(s);
+      };
 
     // populate all vectors
     callback_group->collect_all_ptrs(add_sub, add_service, add_client, add_timer, add_waitable);
@@ -228,7 +227,7 @@ struct RegisteredEntityCache
           scheduler_cbg_handle.get_ready_callback_for_entity(s));
       },
       [] (const rclcpp::SubscriptionBase::SharedPtr & shr_ptr) {
-      shr_ptr->clear_on_new_message_callback();
+        shr_ptr->clear_on_new_message_callback();
     });
 
     clients_cache.update(clients,
@@ -237,7 +236,7 @@ struct RegisteredEntityCache
           scheduler_cbg_handle.get_ready_callback_for_entity(s));
       },
       [] (const rclcpp::ClientBase::SharedPtr & shr_ptr) {
-      shr_ptr->clear_on_new_response_callback();
+        shr_ptr->clear_on_new_response_callback();
     });
     services_cache.update(services,
       [this](const rclcpp::ServiceBase::SharedPtr & s) {
@@ -245,7 +244,7 @@ struct RegisteredEntityCache
           scheduler_cbg_handle.get_ready_callback_for_entity(s));
       },
       [] (const rclcpp::ServiceBase::SharedPtr & shr_ptr) {
-      shr_ptr->clear_on_new_request_callback();
+        shr_ptr->clear_on_new_request_callback();
     });
     waitables_cache.update(waitables,
       [this](const rclcpp::Waitable::SharedPtr & s) {
@@ -253,7 +252,7 @@ struct RegisteredEntityCache
           scheduler_cbg_handle.get_ready_callback_for_entity(s));
       },
       [] (const rclcpp::Waitable::SharedPtr & shr_ptr) {
-      shr_ptr->clear_on_ready_callback();
+        shr_ptr->clear_on_ready_callback();
     });
 
     return true;
