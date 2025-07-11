@@ -19,5 +19,5 @@ namespace executors
 {
 
 std::atomic<uint64_t> GlobalEventIdProvider::last_event_id = 1;
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

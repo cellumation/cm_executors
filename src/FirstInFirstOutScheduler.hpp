@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <deque>
+#include <memory>
+#include <variant>
+#include <vector>
+
 #include <cm_executors/ready_entity.hpp>
 #include <cm_executors/scheduler.hpp>
 #include <cm_executors/global_event_id_provider.hpp>
 
-#include <variant>
 namespace rclcpp
 {
 namespace executors
@@ -26,7 +30,7 @@ namespace executors
 struct FirstInFirstOutCallbackGroupHandle : public CBGScheduler::CallbackGroupHandle
 {
 public:
-  FirstInFirstOutCallbackGroupHandle(CBGScheduler & scheduler)
+  explicit FirstInFirstOutCallbackGroupHandle(CBGScheduler & scheduler)
   : CallbackGroupHandle(scheduler) {}
   ~FirstInFirstOutCallbackGroupHandle() final {}
 
@@ -70,5 +74,5 @@ private:
   std::vector<std::unique_ptr<FirstInFirstOutCallbackGroupHandle>> callback_group_handles;
 };
 
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

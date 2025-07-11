@@ -13,11 +13,14 @@
 // limitations under the License.
 #pragma once
 
+#include <deque>
 #include <functional>
 #include <list>
+#include <memory>
+#include <utility>
+
 #include <rclcpp/callback_group.hpp>
 #include "global_event_id_provider.hpp"
-#include <deque>
 
 namespace rclcpp
 {
@@ -47,7 +50,7 @@ public:
 
   struct CallbackEventType
   {
-    CallbackEventType(std::function<void()> callback)
+    explicit CallbackEventType(std::function<void()> callback)
     : callback(callback)
     {
     }
@@ -62,7 +65,7 @@ public:
 
   struct CallbackGroupHandle
   {
-    CallbackGroupHandle(CBGScheduler & scheduler)
+    explicit CallbackGroupHandle(CBGScheduler & scheduler)
     : scheduler(scheduler) {}
 
     virtual ~CallbackGroupHandle() = default;
@@ -128,10 +131,11 @@ protected:
       if(!has_ready_entities()) {
         idle = true;
       }
-//         else
-//         {
-//             throw std::runtime_error("Internal error, group marked as skipped, but work was ready");
-//         }
+//       else
+//       {
+//           throw std::runtime_error("Internal error, group marked as skipped,"
+//                                    " but work was ready");
+//       }
     }
     std::mutex ready_mutex;
 
@@ -170,7 +174,7 @@ private:
 
     callback_groups.remove_if([&callback_handle] (const auto & e) {
         return e.get() == callback_handle;
-                                                                                                     });
+    });
   }
 
   // Will be called, by CallbackGroupHandle if any entity in the cb group is ready for execution
@@ -181,7 +185,8 @@ private:
 //          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", "CallbackGroupHandle moved to ready");
       std::lock_guard l(ready_callback_groups_mutex);
       ready_callback_groups.push_back(handle);
-//          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", ("Num ready CallbackGroupHandles : " + std::to_string(ready_callback_groups.size())).c_str());
+//          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", ("Num ready CallbackGroupHandles : " +
+//       std::to_string(ready_callback_groups.size())).c_str());
     }
 
     wakeup_one_worker_thread();
@@ -231,7 +236,7 @@ private:
     std::unique_lock lk(ready_callback_groups_mutex);
     work_ready_conditional.wait(lk, [this]() -> bool {
         return !ready_callback_groups.empty() || release_worker_once || release_workers;
-                                                                                                                                      });
+    });
     release_worker_once = false;
   }
 
@@ -240,7 +245,7 @@ private:
     std::unique_lock lk(ready_callback_groups_mutex);
     work_ready_conditional.wait_for(lk, timeout, [this]() -> bool {
         return !ready_callback_groups.empty() || release_worker_once || release_workers;
-                                                                                                                                                   });
+    });
     release_worker_once = false;
   }
 
@@ -273,6 +278,5 @@ protected:
 
   std::list<std::unique_ptr<CallbackGroupHandle>> callback_groups;
 };
-
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

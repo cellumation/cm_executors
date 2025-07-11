@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RCLCPP__EXECUTORS__EXECUTOR_TYPES_HPP_
-#define RCLCPP__EXECUTORS__EXECUTOR_TYPES_HPP_
+#ifndef EXECUTORS__EXECUTOR_TYPES_HPP_
+#define EXECUTORS__EXECUTOR_TYPES_HPP_
 
 #include <gtest/gtest.h>
 
@@ -73,4 +73,4 @@ using StandardExecutors =
   rclcpp::executors::MultiThreadedExecutor,
   rclcpp::experimental::executors::EventsExecutor>;
 
-#endif  // RCLCPP__EXECUTORS__EXECUTOR_TYPES_HPP_
+#endif  // EXECUTORS__EXECUTOR_TYPES_HPP_

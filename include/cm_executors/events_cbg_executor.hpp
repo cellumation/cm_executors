@@ -15,12 +15,13 @@
 #pragma once
 
 #include <chrono>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <thread>
-#include <deque>
 #include <unordered_map>
+#include <vector>
 
 #include "rclcpp/executor.hpp"
 #include "rclcpp/macros.hpp"
@@ -35,7 +36,7 @@ namespace executors
 class TimerManager;
 struct RegisteredEntityCache;
 class CBGScheduler;
-class GloablaWeakExecutableCache;
+struct GloablaWeakExecutableCache;
 
 class EventsCBGExecutor : public rclcpp::Executor
 {

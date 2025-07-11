@@ -39,5 +39,5 @@ public:
     return  ++last_event_id;
   }
 };
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

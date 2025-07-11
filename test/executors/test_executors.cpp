@@ -813,7 +813,7 @@ TYPED_TEST(TestExecutors, testService)
   spinner.join();
 }
 
-//test if objects work that were added after spinning started
+// test if objects work that were added after spinning started
 TYPED_TEST(TestExecutors, addAfterSpin)
 {
   using ExecutorType = TypeParam;

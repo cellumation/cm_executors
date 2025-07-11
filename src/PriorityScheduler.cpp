@@ -38,7 +38,8 @@ get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](std::function<void()> executed_callback) {
            std::lock_guard l(ready_mutex);
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle", "TimerBase ready callback called");
+//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
+//            "TimerBase ready callback called");
 
            ready_timers.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                executed_callback});
@@ -165,7 +166,6 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
 std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_next_ready_entity(
   std::deque<ReadyEntity> & queue)
 {
-
 //     RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", "get_next_ready_entity called");
   std::lock_guard l(ready_mutex);
 
@@ -175,9 +175,10 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
     std::function<void()> exec_fun = first.get_execute_function();
     queue.pop_front();
     if(!exec_fun) {
-//             RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", "found ready entity, but func was empty");
+//         RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
+//         "found ready entity, but func was empty");
 
-            // was deleted, or in case of timer was canceled
+      // was deleted, or in case of timer was canceled
       continue;
     }
 
@@ -197,16 +198,20 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
   while(!queue.empty()) {
     auto & first = queue.front();
     if(first.id > max_id) {
-//             RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", ("had work, but Id was to small " + std::to_string(first.id) + " max id " + std::to_string(max_id)).c_str());
+//       RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
+//                               ("had work, but Id was to small " + std::to_string(first.id)
+//                               + " max id " + std::to_string(max_id)).c_str());
       return std::nullopt;
     }
 
     std::function<void()> exec_fun = first.get_execute_function();
     queue.pop_front();
     if(!exec_fun) {
-//             RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", ("found entity, but got no exec_fun " + std::to_string(max_id)).c_str());
+//       RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
+//                               ("found entity, but got no exec_fun " +
+//                                 std::to_string(max_id)).c_str());
 
-            // was deleted, or in case of timer was canceled
+      // was deleted, or in case of timer was canceled
       continue;
     }
 
@@ -215,7 +220,9 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
 
   mark_as_skiped();
 
-//     RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", ("no ready_entities max id " + std::to_string(max_id)).c_str());
+//   RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
+//                           ("no ready_entities max id " +
+//                           std::to_string(max_id)).c_str());
 
   return std::nullopt;
 }
@@ -256,8 +263,9 @@ std::optional<PriorityScheduler::ExecutableEntity> PriorityScheduler::get_next_r
 {
   std::lock_guard l(ready_callback_groups_mutex);
 
-    // as, we remove an reappend ready callback_groups during execution, the first ready cbg may not contain
-    // the lowest id. Therefore we need to search the whole deque
+  // as, we remove an reappend ready callback_groups during execution,
+  // the first ready cbg may not contain the lowest id. Therefore we
+  // need to search the whole deque
   for (size_t i = PriorityCallbackGroupHandle::Priorities::Calls;
     i <= PriorityCallbackGroupHandle::Priorities::Waitable; i++)
   {
@@ -278,7 +286,5 @@ std::optional<PriorityScheduler::ExecutableEntity> PriorityScheduler::get_next_r
 
   return std::nullopt;
 }
-
-
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

@@ -239,7 +239,8 @@ BENCHMARK_F(PerformanceTestExecutor, single_thread_executor_wait_for_work)(bench
   benchmark_wait_for_work<rclcpp::executors::SingleThreadedExecutor>(st);
 }
 
-// BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_wait_for_work)(benchmark::State & st)
+// BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_wait_for_work)
+// (benchmark::State & st)
 // {
 //   benchmark_wait_for_work<rclcpp::executors::StaticSingleThreadedExecutor>(st);
 // }
@@ -262,7 +263,8 @@ BENCHMARK_F(
   benchmark_wait_for_work_force_rebuild<rclcpp::executors::SingleThreadedExecutor>(st);
 }
 
-// BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_wait_for_work_rebuild)(benchmark::State & st)
+// BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_wait_for_work_rebuild)
+// (benchmark::State & st)
 // {
 //   benchmark_wait_for_work_force_rebuild<rclcpp::executors::StaticSingleThreadedExecutor>(st);
 // }
@@ -287,7 +289,6 @@ public:
   void
   add_to_wait_set(rcl_wait_set_t * wait_set) override
   {
-
     rcl_ret_t ret = rcl_wait_set_add_guard_condition(
       wait_set,
       &gc.get_rcl_guard_condition(), &gc_waitset_idx);
@@ -299,7 +300,6 @@ public:
     if (has_trigger) {
       gc.trigger();
     }
-
   }
 
   void trigger()
@@ -369,7 +369,6 @@ private:
   std::function<void(void)> cb_fun;
   size_t gc_waitset_idx = 0;
   rclcpp::GuardCondition gc;
-
 };
 
 class CascadedPerformanceTestExecutor : public PerformanceTest
@@ -421,17 +420,14 @@ public:
 //             RCUTILS_LOG_ERROR_NAMED("benchmark", "Notify done");
 //             std::cout << "Notify done " << std::endl;
           });
-
       } else {
         waitables[i]->set_execute_callback_function(
           [this, i]() {
 //             RCUTILS_LOG_ERROR_NAMED("benchmark", "Triggering callback %i", i+1);
 //               std::cout << "Triggering callback " << i+1 << std::endl;
             waitables[i + 1]->trigger();
-
           });
       }
-
     }
     PerformanceTest::SetUp(st);
   }
@@ -472,7 +468,6 @@ public:
         executor.spin();
 
 //       std::cout << "Spin terminated" << std::endl;
-
       });
 
     for (auto _ : st) {
@@ -488,7 +483,6 @@ public:
       if (!last_cb_triggered) {
         st.SkipWithError("No message was received");
       }
-
     }
 
 //     std::cout << "Stopping executor " << std::endl;
@@ -726,7 +720,6 @@ public:
         break;
       }
     }
-
   }
 
   template<class Executor>
@@ -756,7 +749,6 @@ public:
         break;
       }
     }
-
   }
 
   rclcpp::Node::SharedPtr node;
@@ -876,7 +868,6 @@ BENCHMARK_F(
 
     std::shared_ptr<std::string> ptr = weak_ptr.lock();
     benchmark::DoNotOptimize(ptr);
-
   }
 }
 
@@ -891,7 +882,6 @@ BENCHMARK_F(
 
     std::shared_ptr<std::string> ptr = weak_ptr.lock();
     benchmark::DoNotOptimize(ptr);
-
   }
 }
 BENCHMARK_F(

@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <deque>
+#include <memory>
+#include <vector>
+#include <variant>
+
 #include <cm_executors/ready_entity.hpp>
 #include <cm_executors/events_cbg_executor.hpp>
 #include <cm_executors/scheduler.hpp>
 #include <cm_executors/global_event_id_provider.hpp>
 
-#include <variant>
 namespace rclcpp
 {
 namespace executors
@@ -27,7 +31,7 @@ namespace executors
 struct PriorityCallbackGroupHandle : public CBGScheduler::CallbackGroupHandle
 {
 public:
-  PriorityCallbackGroupHandle(CBGScheduler & scheduler)
+  explicit PriorityCallbackGroupHandle(CBGScheduler & scheduler)
   : CallbackGroupHandle(scheduler) {}
   ~PriorityCallbackGroupHandle() final {}
 
@@ -96,6 +100,5 @@ private:
 
   std::vector<std::unique_ptr<PriorityCallbackGroupHandle>> callback_group_handles;
 };
-
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

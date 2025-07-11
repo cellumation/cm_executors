@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#include <deque>
+#include <utility>
+
 #include <cm_executors/scheduler.hpp>
 #include <cm_executors/global_event_id_provider.hpp>
-#include <deque>
 #include <cm_executors/events_cbg_executor.hpp>
+
 #include "timer_manager.hpp"
 
 namespace rclcpp
@@ -42,17 +45,17 @@ struct ReadyEntity
     rclcpp::ServiceBase::WeakPtr, rclcpp::ClientBase::WeakPtr, CBGScheduler::WaitableWithEventType,
     CBGScheduler::CallbackEventType> entity;
 
-  ReadyEntity(const rclcpp::SubscriptionBase::WeakPtr ptr)
+  explicit ReadyEntity(const rclcpp::SubscriptionBase::WeakPtr ptr)
   : entity(ptr), id(GlobalEventIdProvider::get_next_id()) {}
-  ReadyEntity(const ReadyTimerWithExecutedCallback & timer)
+  explicit ReadyEntity(const ReadyTimerWithExecutedCallback & timer)
   : entity(timer), id(GlobalEventIdProvider::get_next_id()) {}
-  ReadyEntity(const rclcpp::ServiceBase::WeakPtr ptr)
+  explicit ReadyEntity(const rclcpp::ServiceBase::WeakPtr ptr)
   : entity(ptr), id(GlobalEventIdProvider::get_next_id()) {}
-  ReadyEntity(const rclcpp::ClientBase::WeakPtr ptr)
+  explicit ReadyEntity(const rclcpp::ClientBase::WeakPtr ptr)
   : entity(ptr), id(GlobalEventIdProvider::get_next_id()) {}
-  ReadyEntity(const CBGScheduler::WaitableWithEventType & ev)
+  explicit ReadyEntity(const CBGScheduler::WaitableWithEventType & ev)
   : entity(ev), id(GlobalEventIdProvider::get_next_id()) {}
-  ReadyEntity(const CBGScheduler::CallbackEventType & ev)
+  explicit ReadyEntity(const CBGScheduler::CallbackEventType & ev)
   : entity(ev), id(GlobalEventIdProvider::get_next_id()) {}
 
   std::function<void()> get_execute_function() const
@@ -129,5 +132,5 @@ struct ReadyEntity
     return std::visit([](const auto & entity) {return entity.expired();}, entity);
   }
 };
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

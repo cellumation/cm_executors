@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+
+#include <unordered_map>
+#include <utility>
+#include <memory>
+#include <vector>
+
 #include "scheduler.hpp"
 #include "timer_manager.hpp"
 #include <rclcpp/executors/executor_entities_collection.hpp>
@@ -101,7 +107,6 @@ public:
   {
     entities.clear();
   }
-
 };
 
 struct RegisteredEntityCache
@@ -149,8 +154,7 @@ struct RegisteredEntityCache
       return;
     }
 
-    if(!regenerate_events()) {
-    }
+    regenerate_events();
   }
 
 
@@ -280,6 +284,5 @@ struct RegisteredEntityCache
     }
   }
 };
-
-}
-}
+}  // namespace executors
+}  // namespace rclcpp

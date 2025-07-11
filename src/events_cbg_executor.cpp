@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <inttypes.h>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -23,7 +24,6 @@
 
 #include "rclcpp/logging.hpp"
 #include "rclcpp/node.hpp"
-#include <inttypes.h>
 #include <cm_executors/timer_manager.hpp>
 #include <cm_executors/registered_entity_cache.hpp>
 #include <cm_executors/events_cbg_executor.hpp>
@@ -67,7 +67,6 @@ struct GloablaWeakExecutableCache
   {
     guard_conditions.clear();
   }
-
 };
 
 EventsCBGExecutor::EventsCBGExecutor(
@@ -84,26 +83,22 @@ EventsCBGExecutor::EventsCBGExecutor(
   global_executable_cache(std::make_unique<GloablaWeakExecutableCache>() ),
   nodes_executable_cache(std::make_unique<GloablaWeakExecutableCache>() )
 {
-
   global_executable_cache->add_guard_condition_event (
         interrupt_guard_condition_,
         std::function<void(void)>() );
 
   global_executable_cache->add_guard_condition_event(
     shutdown_guard_condition_, [this]() {
-
 //         RCUTILS_LOG_ERROR_NAMED ("rclcpp", "Shutdown guard condition triggered !");
-
       remove_all_nodes_and_callback_groups();
 
       spinning = false;
 
       scheduler->release_all_worker_threads();
 
-      //FIXME deadlock
+      // FIXME deadlock
 //         timer_manager->stop();
     });
-
 
   number_of_threads_ = number_of_threads > 0 ?
     number_of_threads :
@@ -134,7 +129,7 @@ EventsCBGExecutor::EventsCBGExecutor(
 
 EventsCBGExecutor::~EventsCBGExecutor()
 {
-  //we need to shut down the timer manager first, as it might access the Schedulers
+  // we need to shut down the timer manager first, as it might access the Schedulers
   timer_manager->stop();
 
   // signal all processing threads to shut down
@@ -154,7 +149,8 @@ EventsCBGExecutor::~EventsCBGExecutor()
     rcl_reset_error();
   }
 
-  // now we may release the memory of the timer_manager, as we know no thread is working on it any more
+  // now we may release the memory of the timer_manager,
+  // as we know no thread is working on it any more
   timer_manager.reset();
 }
 
@@ -209,7 +205,9 @@ bool EventsCBGExecutor::execute_ready_executables_until(
     }
   }
 
-//   RCUTILS_LOG_ERROR_NAMED("rclcpp", (std::string("execute_ready_executables_until had word ") + std::to_string(found_work)).c_str() );
+//   RCUTILS_LOG_ERROR_NAMED("rclcpp",
+//                           (std::string("execute_ready_executables_until had word ")
+//                           + std::to_string(found_work)).c_str() );
 
   return found_work;
 }
@@ -295,7 +293,7 @@ void EventsCBGExecutor::sync_callback_groups()
         }
       }
 
-//         RCUTILS_LOG_INFO("Using new callback group");
+//       RCUTILS_LOG_INFO("Using new callback group");
 
       CallbackGroupData new_entry;
       new_entry.registered_entities = std::make_unique<RegisteredEntityCache>(*scheduler,
@@ -322,9 +320,9 @@ void EventsCBGExecutor::sync_callback_groups()
     next_group_data.reserve(added_cbgs_cpy.size() + added_nodes_cpy.size() * 3);
 
     nodes_executable_cache->clear();
-//         nodes_executable_cache->guard_conditions.reserve(added_nodes_cpy.size());
+//     nodes_executable_cache->guard_conditions.reserve(added_nodes_cpy.size());
 
-//         RCUTILS_LOG_ERROR("Added node size is %lu", added_nodes_cpy.size());
+//     RCUTILS_LOG_ERROR("Added node size is %lu", added_nodes_cpy.size());
 
     for (const node_interfaces::NodeBaseInterface::WeakPtr & node_weak_ptr : added_nodes_cpy) {
       auto node_ptr = node_weak_ptr.lock();
@@ -336,7 +334,8 @@ void EventsCBGExecutor::sync_callback_groups()
             }
           });
 
-        // register node guard condition, and trigger resync on node change event
+        // register node guard condition, and trigger
+        // resync on node change event
         nodes_executable_cache->add_guard_condition_event(
           node_ptr->get_shared_notify_guard_condition(),
           [this]() {
@@ -354,7 +353,7 @@ void EventsCBGExecutor::sync_callback_groups()
     }
   }
 
-  //FIXME inform scheduler about remove cbgs
+  // FIXME inform scheduler about remove cbgs
 
   callback_groups.swap(next_group_data);
 }
@@ -365,24 +364,27 @@ EventsCBGExecutor::run(size_t this_thread_number)
   (void) this_thread_number;
 
   while (rclcpp::ok(this->context_) && spinning.load() ) {
-
     sync_callback_groups();
 
     auto ready_entity = scheduler->get_next_ready_entity();
     if(!ready_entity) {
-//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"), "Worker found no work. thread " << std::this_thread::get_id() << " going to sleep");
+//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),
+//                          "Worker found no work. thread " << std::this_thread::get_id()
+//                          << " going to sleep");
       scheduler->block_worker_thread();
-//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " woken up");
+//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread "
+//         << std::this_thread::get_id() << " woken up");
       continue;
     }
 
-//     RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread " << std::this_thread::get_id() << " executing work");
+//     RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread "
+//       << std::this_thread::get_id() << " executing work");
     ready_entity->execute_function();
 
     scheduler->mark_entity_as_executed(*ready_entity);
   }
 
-//     RCUTILS_LOG_INFO("Stopping execution thread");
+//   RCUTILS_LOG_INFO("Stopping execution thread");
 }
 
 void
@@ -393,7 +395,6 @@ EventsCBGExecutor::run(
   (void) this_thread_number;
 
   while (rclcpp::ok(this->context_) && spinning.load() ) {
-
     sync_callback_groups();
 
     auto ready_entity = scheduler->get_next_ready_entity();
@@ -495,7 +496,6 @@ bool EventsCBGExecutor::collect_and_execute_ready_events(
   bool had_work = false;
 
   while (rclcpp::ok(this->context_) && spinning && cur_time <= end_time) {
-
     if (!execute_previous_ready_executables_until(end_time) ) {
       return had_work;
     }
@@ -544,7 +544,6 @@ EventsCBGExecutor::spin()
 
 void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> exception_handler)
 {
-
   if (spinning.exchange(true) ) {
     throw std::runtime_error("spin() called while already spinning");
   }
@@ -672,7 +671,7 @@ EventsCBGExecutor::remove_callback_group(
     added_callback_groups.push_back(group_ptr);
   }
 
-  //we need to unregister all callbacks
+  // we need to unregister all callbacks
   unregister_event_callbacks(group_ptr);
 
   if (found) {
@@ -778,4 +777,4 @@ void EventsCBGExecutor::add_callback_group_only(rclcpp::CallbackGroup::SharedPtr
 {
   add_callback_group(group_ptr, nullptr, true);
 }
-}
+}  // namespace rclcpp::executors
