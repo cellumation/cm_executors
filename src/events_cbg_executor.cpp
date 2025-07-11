@@ -1,6 +1,3 @@
-#include <cm_executors/events_cbg_executor.hpp>
-
-
 // Copyright 2024 Cellumation GmbH
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// #include "rclcpp/executors/cbg_executor.hpp"
 
 #include <chrono>
 #include <functional>
@@ -31,6 +26,8 @@
 #include <inttypes.h>
 #include <cm_executors/timer_manager.hpp>
 #include <cm_executors/registered_entity_cache.hpp>
+#include <cm_executors/events_cbg_executor.hpp>
+
 #include "FirstInFirstOutScheduler.hpp"
 
 namespace rclcpp::executors
