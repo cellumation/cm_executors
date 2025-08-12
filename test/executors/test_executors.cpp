@@ -444,6 +444,12 @@ public:
     return is_ready_count_;
   }
 
+  std::vector<std::shared_ptr<rclcpp::TimerBase>>
+  get_timers() const override
+  {
+    return {};
+  };
+
 private:
   std::atomic<size_t> trigger_count_ = 0;
   std::atomic<size_t> is_ready_count_ = 0;
