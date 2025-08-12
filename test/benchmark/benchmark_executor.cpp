@@ -287,10 +287,10 @@ public:
   CallbackWaitable() = default;
 
   void
-  add_to_wait_set(rcl_wait_set_t * wait_set) override
+  add_to_wait_set(rcl_wait_set_t & wait_set) override
   {
     rcl_ret_t ret = rcl_wait_set_add_guard_condition(
-      wait_set,
+      &wait_set,
       &gc.get_rcl_guard_condition(), &gc_waitset_idx);
     if (RCL_RET_OK != ret) {
       rclcpp::exceptions::throw_from_rcl_error(
@@ -310,10 +310,10 @@ public:
   }
 
   bool
-  is_ready(rcl_wait_set_t * wait_set) override
+  is_ready(const rcl_wait_set_t & wait_set) override
   {
 //     std::cout << "Is ready called for idx " << gc_waitset_idx << std::endl;
-    return wait_set->guard_conditions[gc_waitset_idx];
+    return wait_set.guard_conditions[gc_waitset_idx];
   }
 
   std::shared_ptr<void>
@@ -330,7 +330,7 @@ public:
   }
 
   void
-  execute(std::shared_ptr<void> & data) override
+  execute(const std::shared_ptr<void> & data) override
   {
 //     std::cout << "execute called for idx " << gc_waitset_idx << std::endl;
     has_trigger = false;
@@ -364,6 +364,11 @@ public:
     gc.set_on_trigger_callback(nullptr);
   }
 
+  std::vector<std::shared_ptr<rclcpp::TimerBase>>
+  get_timers() const override
+  {
+    return {};
+  };
 private:
   std::atomic<bool> has_trigger = false;
   std::function<void(void)> cb_fun;
