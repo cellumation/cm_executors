@@ -2,8 +2,8 @@
 Changelog for package cm_executors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.9.1 (2025-08-13)
+------------------
 * feat: Added build and test action
   * Action test2
   * fix runs_on
