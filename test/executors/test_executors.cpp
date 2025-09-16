@@ -601,16 +601,6 @@ TYPED_TEST(TestExecutors, spin_some_max_duration)
 {
   using ExecutorType = TypeParam;
 
-  // TODO(wjwwood): The `StaticSingleThreadedExecutor`
-  //   do not properly implement max_duration (it seems), so disable this test
-  //   for them in the meantime.
-  //   see: https://github.com/ros2/rclcpp/issues/2462
-  if (
-    std::is_same<ExecutorType, rclcpp::executors::StaticSingleThreadedExecutor>())
-  {
-    GTEST_SKIP();
-  }
-
   // Use an isolated callback group to avoid interference from any housekeeping
   // items that may be in the default callback group of the node.
   constexpr bool automatically_add_to_executor_with_node = false;

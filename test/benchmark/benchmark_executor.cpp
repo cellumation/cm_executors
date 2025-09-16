@@ -218,11 +218,6 @@ BENCHMARK_F(PerformanceTestExecutor, single_thread_executor_spin_some)(benchmark
   executor_spin_some<rclcpp::executors::SingleThreadedExecutor>(st);
 }
 
-BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_spin_some)(benchmark::State & st)
-{
-  executor_spin_some<rclcpp::executors::StaticSingleThreadedExecutor>(st);
-}
-
 BENCHMARK_F(PerformanceTestExecutor, multi_thread_executor_spin_some)(benchmark::State & st)
 {
   executor_spin_some<rclcpp::executors::MultiThreadedExecutor>(st);
@@ -238,12 +233,6 @@ BENCHMARK_F(PerformanceTestExecutor, single_thread_executor_wait_for_work)(bench
 {
   benchmark_wait_for_work<rclcpp::executors::SingleThreadedExecutor>(st);
 }
-
-// BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_wait_for_work)
-// (benchmark::State & st)
-// {
-//   benchmark_wait_for_work<rclcpp::executors::StaticSingleThreadedExecutor>(st);
-// }
 
 BENCHMARK_F(PerformanceTestExecutor, multi_thread_executor_wait_for_work)(benchmark::State & st)
 {
@@ -263,11 +252,6 @@ BENCHMARK_F(
   benchmark_wait_for_work_force_rebuild<rclcpp::executors::SingleThreadedExecutor>(st);
 }
 
-// BENCHMARK_F(PerformanceTestExecutor, static_single_thread_executor_wait_for_work_rebuild)
-// (benchmark::State & st)
-// {
-//   benchmark_wait_for_work_force_rebuild<rclcpp::executors::StaticSingleThreadedExecutor>(st);
-// }
 
 BENCHMARK_F(
   PerformanceTestExecutor,
@@ -516,13 +500,6 @@ BENCHMARK_F(
   executor_spin_some<rclcpp::executors::SingleThreadedExecutor>(st);
 }
 
-BENCHMARK_F(
-  CascadedPerformanceTestExecutor,
-  static_single_thread_executor_spin)(benchmark::State & st)
-{
-  executor_spin_some<rclcpp::executors::StaticSingleThreadedExecutor>(st);
-}
-
 BENCHMARK_F(CascadedPerformanceTestExecutor, multi_thread_executor_spin)(benchmark::State & st)
 {
   executor_spin_some<rclcpp::executors::MultiThreadedExecutor>(st);
@@ -633,13 +610,6 @@ BENCHMARK_F(
   single_thread_executor_spin_some)(benchmark::State & st)
 {
   executor_spin_some<rclcpp::executors::SingleThreadedExecutor>(st);
-}
-
-BENCHMARK_F(
-  PerformanceTestExecutorMultipleCallbackGroups,
-  static_single_thread_executor_spin_some)(benchmark::State & st)
-{
-  executor_spin_some<rclcpp::executors::StaticSingleThreadedExecutor>(st);
 }
 
 BENCHMARK_F(
@@ -793,20 +763,6 @@ BENCHMARK_F(PerformanceTestExecutorSimple, cbg_executor_remove_node)(benchmark::
 
 BENCHMARK_F(
   PerformanceTestExecutorSimple,
-  static_single_thread_executor_add_node)(benchmark::State & st)
-{
-  add_node<rclcpp::executors::StaticSingleThreadedExecutor>(st);
-}
-
-BENCHMARK_F(
-  PerformanceTestExecutorSimple,
-  static_single_thread_executor_remove_node)(benchmark::State & st)
-{
-  remove_node<rclcpp::executors::StaticSingleThreadedExecutor>(st);
-}
-
-BENCHMARK_F(
-  PerformanceTestExecutorSimple,
   single_thread_executor_spin_node_until_future_complete)(benchmark::State & st)
 {
   spin_node_until_future_complete<rclcpp::executors::SingleThreadedExecutor>(st);
@@ -824,13 +780,6 @@ BENCHMARK_F(
   cbg_executor_spin_node_until_future_complete)(benchmark::State & st)
 {
   spin_node_until_future_complete<rclcpp::executors::EventsCBGExecutor>(st);
-}
-
-BENCHMARK_F(
-  PerformanceTestExecutorSimple,
-  static_single_thread_executor_spin_node_until_future_complete)(benchmark::State & st)
-{
-  spin_node_until_future_complete<rclcpp::executors::StaticSingleThreadedExecutor>(st);
 }
 
 class SharedPtrHolder : public PerformanceTest
@@ -887,42 +836,6 @@ BENCHMARK_F(
 
     std::shared_ptr<std::string> ptr = weak_ptr.lock();
     benchmark::DoNotOptimize(ptr);
-  }
-}
-BENCHMARK_F(
-  PerformanceTestExecutorSimple,
-  static_single_thread_executor_spin_until_future_complete)(benchmark::State & st)
-{
-  rclcpp::executors::StaticSingleThreadedExecutor executor;
-  // test success of an immediately finishing future
-  std::promise<bool> promise;
-  std::future<bool> future = promise.get_future();
-  promise.set_value(true);
-  auto shared_future = future.share();
-
-  auto ret = executor.spin_until_future_complete(shared_future, 100ms);
-  if (ret != rclcpp::FutureReturnCode::SUCCESS) {
-    st.SkipWithError(rcutils_get_error_string().str);
-  }
-
-  reset_heap_counters();
-
-  for (auto _ : st) {
-    (void)_;
-    // static_single_thread_executor has a special design. We need to add/remove the node each
-    // time you call spin
-    st.PauseTiming();
-    executor.add_node(node);
-    st.ResumeTiming();
-
-    ret = executor.spin_until_future_complete(shared_future, 100ms);
-    if (ret != rclcpp::FutureReturnCode::SUCCESS) {
-      st.SkipWithError(rcutils_get_error_string().str);
-      break;
-    }
-    st.PauseTiming();
-    executor.remove_node(node);
-    st.ResumeTiming();
   }
 }
 
