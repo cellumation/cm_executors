@@ -89,15 +89,8 @@ EventsCBGExecutor::EventsCBGExecutor(
 
   global_executable_cache->add_guard_condition_event(
     shutdown_guard_condition_, [this]() {
-//         RCUTILS_LOG_ERROR_NAMED ("rclcpp", "Shutdown guard condition triggered !");
-      remove_all_nodes_and_callback_groups();
-
-      spinning = false;
-
-      scheduler->release_all_worker_threads();
-
-      // FIXME deadlock
-//         timer_manager->stop();
+//       RCUTILS_LOG_ERROR_NAMED ("rclcpp", "Shutdown guard condition triggered !");
+      shutdown();
     });
 
   number_of_threads_ = number_of_threads > 0 ?
@@ -129,6 +122,17 @@ EventsCBGExecutor::EventsCBGExecutor(
 
 EventsCBGExecutor::~EventsCBGExecutor()
 {
+  shutdown();
+}
+
+void EventsCBGExecutor::shutdown()
+{
+  if(!timer_manager)
+  {
+    // already shut down
+    return;
+  }
+
   // we need to shut down the timer manager first, as it might access the Schedulers
   timer_manager->stop();
 
