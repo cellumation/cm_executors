@@ -235,6 +235,12 @@ protected:
   void
   run(size_t this_thread_number, std::function<void(const std::exception & e)> exception_handler);
 
+  /**
+   * Te be called in termination case. E.g. destructor of shutdown callback.
+   * Stops the scheduler and cleans up the internal data structures.
+   */
+  void shutdown();
+
   std::unique_ptr<CBGScheduler> scheduler;
 
   std::thread rcl_polling_thread;
