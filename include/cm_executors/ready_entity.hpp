@@ -110,9 +110,9 @@ struct ReadyEntity
                  if (!shr_ptr_in) {
                    return std::function<void()>();
                  }
-                 auto data_in = shr_ptr_in->take_data_by_entity_id(entity.internal_event_type);
 
-                 return [shr_ptr = std::move(shr_ptr_in), data = std::move(data_in)]() {
+                 return [shr_ptr = std::move(shr_ptr_in), event_type = entity.internal_event_type]() {
+                        auto data = shr_ptr->take_data_by_entity_id(event_type);
 //                     RCUTILS_LOG_INFO("Before execute of waitable");
                           shr_ptr->execute(data);
                         };
