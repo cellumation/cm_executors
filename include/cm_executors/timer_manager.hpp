@@ -52,10 +52,8 @@ public:
     // Wake this thread if the context is shutdown
     shutdown_cb_handle_ = context_->add_on_shutdown_callback(
       [this]() {
-        {
-          std::unique_lock lock(pred_mutex_);
-          shutdown_ = true;
-        }
+        std::unique_lock lock(pred_mutex_);
+        shutdown_ = true;
         if(clock_) {
           clock_->notify_one();
         }
