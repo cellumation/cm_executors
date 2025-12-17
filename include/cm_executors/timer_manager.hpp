@@ -94,6 +94,8 @@ public:
   void
   notify_one()
   {
+    std::unique_lock lock(pred_mutex_);
+
     if(clock_) {
       clock_->notify_one();
     }
