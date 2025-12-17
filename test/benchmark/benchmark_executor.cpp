@@ -352,7 +352,8 @@ public:
   get_timers() const override
   {
     return {};
-  };
+  }
+
 private:
   std::atomic<bool> has_trigger = false;
   std::function<void(void)> cb_fun;
