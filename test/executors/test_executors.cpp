@@ -448,7 +448,7 @@ public:
   get_timers() const override
   {
     return {};
-  };
+  }
 
 private:
   std::atomic<size_t> trigger_count_ = 0;
