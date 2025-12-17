@@ -127,8 +127,7 @@ EventsCBGExecutor::~EventsCBGExecutor()
 
 void EventsCBGExecutor::shutdown()
 {
-  if(!timer_manager)
-  {
+  if(!timer_manager) {
     // already shut down
     return;
   }
