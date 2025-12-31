@@ -126,7 +126,7 @@ protected:
       }
     }
 
-    void mark_as_skiped()
+    void mark_as_skipped()
     {
       if(!has_ready_entities()) {
         idle = true;

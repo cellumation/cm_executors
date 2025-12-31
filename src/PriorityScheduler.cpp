@@ -185,7 +185,7 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
     return CBGScheduler::ExecutableEntity{exec_fun, this};
   }
 
-  mark_as_skiped();
+  mark_as_skipped();
 
   return std::nullopt;
 }
@@ -218,7 +218,7 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
     return CBGScheduler::ExecutableEntity{exec_fun, this};
   }
 
-  mark_as_skiped();
+  mark_as_skipped();
 
 //   RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
 //                           ("no ready_entities max id " +
