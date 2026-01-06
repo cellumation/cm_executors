@@ -85,12 +85,13 @@ public:
 
     void mark_as_executed()
     {
-      std::lock_guard l(ready_mutex);
+      std::unique_lock l(ready_mutex);
       not_ready = false;
 
       if(!has_ready_entities()) {
         idle = true;
       } else {
+        l.unlock();
             // inform scheduler that we have more work
         scheduler.callback_group_ready(this);
       }
@@ -114,14 +115,20 @@ protected:
     *
     * Must be called with ready_mutex locked
     */
-    void check_move_to_ready()
+    void check_move_to_ready(std::unique_lock<std::mutex> & lock)
     {
+    if(lock.mutex() != &ready_mutex) {
+      throw std::runtime_error(
+          "this function must be called under the ready mutex!");
+    }
       if(not_ready) {
         return;
       }
 
       if(idle) {
+        lock.unlock();
         scheduler.callback_group_ready(this);
+        lock.lock();
         idle = false;
       }
     }

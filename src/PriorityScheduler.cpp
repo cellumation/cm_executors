@@ -22,14 +22,14 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
   const rclcpp::SubscriptionBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
            for (size_t i = 0; i < nr_msg; i++) {
              ready_subscriptions.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -37,14 +37,14 @@ std::function<void(std::function<void()> executed_callback)> PriorityCallbackGro
 get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](std::function<void()> executed_callback) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 //         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
 //            "TimerBase ready callback called");
 
            ready_timers.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                executed_callback});
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -52,14 +52,14 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
   const rclcpp::ClientBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
            for (size_t i = 0; i < nr_msg; i++) {
              ready_clients.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -67,14 +67,14 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
   const rclcpp::ServiceBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
            for (size_t i = 0; i < nr_msg; i++) {
              ready_services.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -83,7 +83,7 @@ std::function<void(size_t,
   const rclcpp::Waitable::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg, int event_type) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //         RCUTILS_LOG_ERROR_NAMED("rclcpp", "Waitable got data");
            for (size_t i = 0; i < nr_msg; i++) {
@@ -91,21 +91,21 @@ std::function<void(size_t,
                  event_type}));
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_entity(
   const CBGScheduler::CallbackEventType & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
            for (size_t i = 0; i < nr_msg; i++) {
              ready_calls.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -167,7 +167,7 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
   std::deque<ReadyEntity> & queue)
 {
 //     RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", "get_next_ready_entity called");
-  std::lock_guard l(ready_mutex);
+  std::unique_lock l(ready_mutex);
 
   while(!queue.empty()) {
     auto & first = queue.front();
@@ -193,7 +193,7 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
 std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_next_ready_entity(
   GlobalEventIdProvider::MonotonicId max_id, std::deque<ReadyEntity> & queue)
 {
-  std::lock_guard l(ready_mutex);
+  std::unique_lock l(ready_mutex);
 
   while(!queue.empty()) {
     auto & first = queue.front();

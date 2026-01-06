@@ -22,14 +22,14 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
   const rclcpp::SubscriptionBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //         RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle", "subscriber got data");
            for (size_t i = 0; i < nr_msg; i++) {
              ready_entities.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -37,14 +37,14 @@ std::function<void(std::function<void()> executed_callback)> FirstInFirstOutCall
 get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](std::function<void()> executed_callback) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 //         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
 //            "TimerBase ready callback called");
 
            ready_entities.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                executed_callback});
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -52,7 +52,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
   const rclcpp::ClientBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
 //            "ClientBase ready callback called");
@@ -60,7 +60,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
              ready_entities.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -68,7 +68,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
   const rclcpp::ServiceBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
 //            "ServiceBase ready callback called");
@@ -76,7 +76,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
              ready_entities.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -85,7 +85,7 @@ std::function<void(size_t,
   const rclcpp::Waitable::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg, int event_type) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
 //            "Waitable ready callback called");
@@ -94,14 +94,14 @@ std::function<void(size_t,
                  event_type}));
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callback_for_entity(
   const CBGScheduler::CallbackEventType & entity)
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
-           std::lock_guard l(ready_mutex);
+           std::unique_lock l(ready_mutex);
 
 //         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
 //            "CallbackEventType ready callback called");
@@ -109,7 +109,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
              ready_entities.emplace_back(weak_ptr);
            }
 
-           check_move_to_ready();
+           check_move_to_ready(l);
          };
 }
 
@@ -118,7 +118,7 @@ get_next_ready_entity()
 {
 //     RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle",
 //     "get_next_ready_entity called");
-  std::lock_guard l(ready_mutex);
+  std::unique_lock l(ready_mutex);
 
   while(!ready_entities.empty()) {
     auto & first = ready_entities.front();
@@ -143,7 +143,7 @@ get_next_ready_entity()
 std::optional<CBGScheduler::ExecutableEntity> FirstInFirstOutCallbackGroupHandle::
 get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id)
 {
-  std::lock_guard l(ready_mutex);
+  std::unique_lock l(ready_mutex);
 
   while(!ready_entities.empty()) {
     auto & first = ready_entities.front();
