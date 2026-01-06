@@ -117,10 +117,10 @@ protected:
     */
     void check_move_to_ready(std::unique_lock<std::mutex> & lock)
     {
-    if(lock.mutex() != &ready_mutex) {
-      throw std::runtime_error(
+      if(lock.mutex() != &ready_mutex) {
+        throw std::runtime_error(
           "this function must be called under the ready mutex!");
-    }
+      }
       if(not_ready) {
         return;
       }
