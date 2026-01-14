@@ -254,9 +254,15 @@ struct RegisteredEntityCache
       [this](const rclcpp::Waitable::SharedPtr & s) {
         s->set_on_ready_callback(
           scheduler_cbg_handle.get_ready_callback_for_entity(s));
+        for (const auto & t : s->get_timers()) {
+          timer_manager.add_timer(t, scheduler_cbg_handle.get_ready_callback_for_entity(t));
+        }
       },
-      [] (const rclcpp::Waitable::SharedPtr & shr_ptr) {
-        shr_ptr->clear_on_ready_callback();
+      [this] (const rclcpp::Waitable::SharedPtr & s) {
+        s->clear_on_ready_callback();
+        for (const auto & t : s->get_timers()) {
+          timer_manager.remove_timer(t);
+        }
     });
 
     return true;
