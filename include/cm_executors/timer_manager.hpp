@@ -365,8 +365,10 @@ private:
     }
   }
 
-  void call_ready_timer_callbacks()
+  std::vector<std::function<void()>> get_ready_timer_callbacks()
   {
+    std::vector<std::function<void()>> ready_timer_callbacks;
+    ready_timer_callbacks.reserve(running_timers.size());
     while (!running_timers.empty()) {
       if(remove_if_dropped(running_timers.begin()->second)) {
         running_timers.erase(running_timers.begin());
@@ -387,9 +389,7 @@ private:
 //         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
 //         "Timer ready, cur call time is %+" PRId64 , running_timers.begin()->first.count());
 
-        // timer is ready, call ready callback to make the scheduler pick it up
-        running_timers.begin()->second->timer_ready_callback(
-          [timer_data = running_timers.begin()->second, this] ()
+        auto timer_done_callback = [timer_data = running_timers.begin()->second, this] ()
           {
             // Note, we have the guarantee, that the shared_ptr to this timer is
             // valid in case this callback is executed, as the executor holds a
@@ -401,8 +401,13 @@ private:
             }
 //             RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
 //               "Timer was executed, readding to map, waking timer_thread");
-          }
-        );
+          };
+
+        ready_timer_callbacks.push_back([ready_callback =
+          running_timers.begin()->second->timer_ready_callback,
+          done_callback = std::move(timer_done_callback)] () {
+            ready_callback(done_callback);
+        });
 
         // remove timer from, running list, until it was executed
         // the scheduler will readd the timer after execution
@@ -416,15 +421,18 @@ private:
       }
       break;
     }
+
+    return ready_timer_callbacks;
   }
 
   void timer_thread()
   {
     while (running && rclcpp::ok()) {
       std::chrono::nanoseconds next_wakeup_time;
+      std::vector<std::function<void()>> ready_timer_callbacks;
       {
         std::scoped_lock l(mutex);
-        call_ready_timer_callbacks();
+        ready_timer_callbacks = get_ready_timer_callbacks();
 
         if(running_timers.empty()) {
           used_clock_for_timers.reset();
@@ -433,6 +441,14 @@ private:
           next_wakeup_time = running_timers.begin()->first;
         }
       }
+
+      for(const std::function<void()> & timer_ready_fun : ready_timer_callbacks) {
+        // inform the timer that it is ready. We need to do this out of the scope
+        // of the mutex, to avoid a deadlock, as the timer_ready function will need
+        // to acquire the callback group mutex
+        timer_ready_fun();
+      }
+
       if(used_clock_for_timers) {
         try {
           used_clock_for_timers->wait_until_started();
