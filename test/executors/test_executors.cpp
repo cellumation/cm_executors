@@ -82,7 +82,7 @@ public:
   rclcpp::Node::SharedPtr node;
   rclcpp::Publisher<test_msgs::msg::Empty>::SharedPtr publisher;
   rclcpp::Subscription<test_msgs::msg::Empty>::SharedPtr subscription;
-  int callback_count;
+  std::atomic<int> callback_count;
 };
 
 template<typename T>
@@ -311,7 +311,7 @@ TYPED_TEST(TestExecutors, testSpinUntilFutureCompleteWithTimeout)
   ExecutorType executor;
   executor.add_node(this->node);
 
-  bool spin_exited = false;
+  std::atomic<bool> spin_exited = false;
 
   // Needs to run longer than spin_until_future_complete's timeout.
   std::future<void> future = std::async(
@@ -699,7 +699,7 @@ TYPED_TEST(TestExecutors, testSpinUntilFutureCompleteInterrupted)
   ExecutorType executor;
   executor.add_node(this->node);
 
-  bool spin_exited = false;
+  std::atomic<bool> spin_exited = false;
 
   // This needs to block longer than it takes to get to the shutdown call below and for
   // spin_until_future_complete to return
@@ -764,7 +764,7 @@ TYPED_TEST(TestExecutors, testService)
 
   using Service = test_msgs::srv::Empty;
 
-  bool gotCallback = false;
+  std::atomic<bool> gotCallback = false;
 
   auto service_cb = [&gotCallback](const std::shared_ptr<Service::Request>/*request*/,
     std::shared_ptr<Service::Response>/*response*/)
@@ -841,7 +841,7 @@ TYPED_TEST(TestExecutors, addAfterSpin)
 
   using Service = test_msgs::srv::Empty;
 
-  bool gotCallback = false;
+  std::atomic<bool> gotCallback = false;
 
   auto service_cb = [&gotCallback](const std::shared_ptr<Service::Request>/*request*/,
     std::shared_ptr<Service::Response>/*response*/)
