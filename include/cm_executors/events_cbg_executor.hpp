@@ -290,7 +290,7 @@ private:
 
   std::chrono::nanoseconds next_exec_timeout_;
 
-  std::atomic_bool needs_callback_group_resync;
+  std::atomic_bool needs_callback_group_resync = false;
 
   /// Spinning state, used to prevent multi threaded calls to spin and to cancel blocking spins.
   std::atomic_bool spinning;
