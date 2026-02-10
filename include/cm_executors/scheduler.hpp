@@ -83,14 +83,23 @@ public:
     virtual std::function<void(size_t)> get_ready_callback_for_entity(
       const CallbackEventType & entity) = 0;
 
+      /**
+       * Marks the last removed ready entitiy as executed.
+       */
     void mark_as_executed()
     {
-      std::lock_guard l(ready_mutex);
-      not_ready = false;
+      bool hasMoreWork = false;
+      {
+        std::lock_guard l(ready_mutex);
+        not_ready = false;
 
-      if(!has_ready_entities()) {
-        idle = true;
-      } else {
+        if(!has_ready_entities()) {
+          idle = true;
+        } else {
+          hasMoreWork = true;
+        }
+      }
+      if(hasMoreWork) {
             // inform scheduler that we have more work
         scheduler.callback_group_ready(this);
       }
@@ -108,22 +117,30 @@ protected:
     virtual bool has_ready_entities() const = 0;
 
     /**
-    * This function checks if the callback group
-    * is currently idle, and may be moved into the
-    * list of ready callback groups
-    *
-    * Must be called with ready_mutex locked
-    */
-    void check_move_to_ready()
+     * Executes the given function to add an entity
+     * under the ready mutex. Afterwards the function
+     * checks if the scheduler needs to be informed
+     * that the callback group got ready and informs
+     * it if needed.
+     */
+    template<typename add_fun>
+    void add_ready_entity(const add_fun & fun)
     {
-      if(not_ready) {
-        return;
-      }
+      {
+        std::lock_guard l(ready_mutex);
 
-      if(idle) {
-        scheduler.callback_group_ready(this);
+        fun();
+
+        if(not_ready || !idle) {
+          return;
+        }
+
         idle = false;
       }
+          // If we reached this point, we were idle and now have work,
+          // therefore we need to move this callback group into the list
+          // of ready callback groups.
+      scheduler.callback_group_ready(this);
     }
 
     void mark_as_skiped()
