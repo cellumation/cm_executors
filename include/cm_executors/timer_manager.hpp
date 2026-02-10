@@ -120,9 +120,10 @@ class TimerQueue
   struct TimerData
   {
     std::shared_ptr<const rcl_timer_t> rcl_ref;
+    std::weak_ptr<rclcpp::TimerBase> timer_ref;
     rclcpp::Clock::SharedPtr clock;
     bool in_running_list = false;
-    std::function<void(const std::function<void()> executed_cb)> timer_ready_callback;
+    std::function<void(const std::function<void()> & executed_cb)> timer_ready_callback;
   };
 
   class GetClockHelper : public rclcpp::TimerBase
@@ -160,6 +161,14 @@ public:
     }
     if(trigger_thread.joinable()) {
       trigger_thread.join();
+    }
+
+    std::scoped_lock l(mutex);
+
+    for(auto & tData: all_timers) {
+      if(auto shrPtr = tData->timer_ref.lock()) {
+        shrPtr->clear_on_reset_callback();
+      }
     }
   }
 
@@ -250,6 +259,7 @@ public:
     }
 
     std::unique_ptr<TimerData> data = std::make_unique<TimerData>(TimerData{std::move(handle),
+          timer,
           GetClockHelper::get_clock(*timer), false, std::move(timer_ready_callback)});
 
     timer->set_on_reset_callback(
