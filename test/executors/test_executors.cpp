@@ -163,7 +163,7 @@ TYPED_TEST(TestExecutors, spinWithTimer)
   using ExecutorType = TypeParam;
   ExecutorType executor;
 
-  bool timer_completed = false;
+  std::atomic<bool> timer_completed = false;
   auto timer = this->node->create_wall_timer(1ms, [&]() {timer_completed = true;});
   executor.add_node(this->node);
 
@@ -274,7 +274,7 @@ TYPED_TEST(TestExecutors, testSpinUntilFutureCompleteNoTimeout)
       }
     });
 
-  bool spin_exited = false;
+  std::atomic<bool> spin_exited = false;
 
   // Timeout set to negative for no timeout.
   std::thread spinner([&]() {
