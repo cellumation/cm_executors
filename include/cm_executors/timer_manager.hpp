@@ -165,8 +165,8 @@ public:
 
     std::scoped_lock l(mutex);
 
-    for(auto & tData: all_timers) {
-      if(auto shrPtr = tData->timer_ref.lock()) {
+    for (auto & tData : all_timers) {
+      if (auto shrPtr = tData->timer_ref.lock()) {
         shrPtr->clear_on_reset_callback();
       }
     }
