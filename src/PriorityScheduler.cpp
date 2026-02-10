@@ -41,7 +41,6 @@ get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 
                ready_timers.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                  executed_callback});
-
           });
          };
 }
