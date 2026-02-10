@@ -430,6 +430,7 @@ private:
     while (running && rclcpp::ok()) {
       std::chrono::nanoseconds next_wakeup_time;
       std::vector<std::function<void()>> ready_timer_callbacks;
+      rclcpp::Clock::SharedPtr used_clock;
       {
         std::scoped_lock l(mutex);
         ready_timer_callbacks = get_ready_timer_callbacks();
@@ -439,6 +440,7 @@ private:
         } else {
           used_clock_for_timers = running_timers.begin()->second->clock;
           next_wakeup_time = running_timers.begin()->first;
+          used_clock = used_clock_for_timers;
         }
       }
 
@@ -449,14 +451,14 @@ private:
         timer_ready_fun();
       }
 
-      if(used_clock_for_timers) {
+      if(used_clock) {
         try {
-          used_clock_for_timers->wait_until_started();
+          used_clock->wait_until_started();
 
 //           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
 //             "has running timer, using clock to sleep");
           std::unique_lock<std::mutex> l(clock_waiter.mutex());
-          clock_waiter.wait_until(l, used_clock_for_timers,
+          clock_waiter.wait_until(l, used_clock,
               rclcpp::Time(next_wakeup_time.count(), timer_type), [this] () -> bool {
               return wake_up || !running || !rclcpp::ok();
           });
