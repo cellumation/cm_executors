@@ -135,10 +135,14 @@ void EventsCBGExecutor::shutdown()
   // we need to shut down the timer manager first, as it might access the Schedulers
   timer_manager->stop();
 
+  bool was_spining = spinning;
+
   // signal all processing threads to shut down
   spinning = false;
 
-  scheduler->release_all_worker_threads();
+  if(was_spining) {
+    scheduler->release_all_worker_threads();
+  }
 
   remove_all_nodes_and_callback_groups();
 
@@ -597,9 +601,13 @@ EventsCBGExecutor::add_callback_group(
 void
 EventsCBGExecutor::cancel()
 {
+  bool was_spinning = spinning;
+
   spinning.store(false);
 
-  scheduler->release_all_worker_threads();
+  if(was_spinning) {
+    scheduler->release_all_worker_threads();
+  }
 
   try {
     interrupt_guard_condition_->trigger();
