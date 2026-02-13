@@ -363,9 +363,10 @@ private:
 
 class CascadedPerformanceTestExecutor : public PerformanceTest
 {
+  std::mutex cond_mutex;
   std::condition_variable cascase_done;
   std::vector<std::shared_ptr<CallbackWaitable>> waitables;
-  std::atomic<bool> last_cb_triggered;
+  bool last_cb_triggered;
 
 public:
   void SetUp(benchmark::State & st)
@@ -376,36 +377,53 @@ public:
       nodes.push_back(std::make_shared<rclcpp::Node>("my_node_" + std::to_string(i)));
 
       for (unsigned int j = 0u; j < kNumberOfPubSubs; j++) {
-        publishers.push_back(
-          nodes[i]->create_publisher<test_msgs::msg::Empty>(
-            "/thread" + std::to_string(st.thread_index()) + "/empty_msgs_" + std::to_string(i) +
-            "_" + std::to_string(j), rclcpp::QoS(10)));
+        std::string topicName = "/thread" + std::to_string(st.thread_index()) + "/empty_msgs_" +
+          std::to_string(i) +
+          "_" + std::to_string(j);
 
-        auto callback = [this, i](test_msgs::msg::Empty::ConstSharedPtr) {
-            if (i == kNumberOfNodes - 1) {
-              this->callback_count++;
-              cascase_done.notify_all();
-            } else {
-              publishers[i + 1]->publish(empty_msgs);
+
+        publishers.push_back(
+          nodes[i]->create_publisher<test_msgs::msg::Empty>(topicName,
+              rclcpp::QoS(10)));
+
+        auto callback = [this, i, j](test_msgs::msg::Empty::ConstSharedPtr) {
+            if(j == kNumberOfPubSubs - 1) {
+              if (i == kNumberOfNodes - 1) {
+                this->callback_count++;
+                {
+                  std::unique_lock<std::mutex> lk(cond_mutex);
+
+                  last_cb_triggered = true;
+                }
+                cascase_done.notify_all();
+                return;
+              }
             }
+
+            size_t next = i * kNumberOfPubSubs + j + 1;
+            publishers[next]->publish(empty_msgs);
           };
         subscriptions.push_back(
-          nodes[i]->create_subscription<test_msgs::msg::Empty>(
-            "/thread" + std::to_string(st.thread_index()) + "/empty_msgs_" + std::to_string(i) +
-            "_" + std::to_string(j), rclcpp::QoS(10), std::move(callback)));
+          nodes[i]->create_subscription<test_msgs::msg::Empty>(topicName, rclcpp::QoS(10),
+          std::move(callback)));
       }
 
       auto waitable_interfaces = nodes.back()->get_node_waitables_interface();
 
-      auto callback_waitable = std::make_shared<CallbackWaitable>();
-      waitables.push_back(callback_waitable);
-      waitable_interfaces->add_waitable(callback_waitable, nullptr);
+      for(size_t i = 0; i < 5; i++) {
+        auto callback_waitable = std::make_shared<CallbackWaitable>();
+        waitables.push_back(callback_waitable);
+        waitable_interfaces->add_waitable(callback_waitable, nullptr);
+      }
     }
     for (unsigned int i = 0u; i < waitables.size(); i++) {
       if (i == waitables.size() - 1) {
         waitables[i]->set_execute_callback_function(
           [this]() {
-            last_cb_triggered = true;
+            {
+              std::unique_lock<std::mutex> lk(cond_mutex);
+              last_cb_triggered = true;
+            }
             cascase_done.notify_all();
 //             RCUTILS_LOG_ERROR_NAMED("benchmark", "Notify done");
 //             std::cout << "Notify done " << std::endl;
@@ -450,7 +468,6 @@ public:
     callback_count = 0;
     reset_heap_counters();
 
-    std::mutex cond_mutex;
     std::unique_lock<std::mutex> lk(cond_mutex);
     auto thread = std::thread(
       [&executor] {
@@ -465,6 +482,7 @@ public:
       last_cb_triggered = false;
 
       // start the cascasde
+//       publishers[0]->publish(test_msgs::msg::Empty());
       waitables[0]->trigger();
 
       cascase_done.wait_for(lk, 500ms);
