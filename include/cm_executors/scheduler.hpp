@@ -101,10 +101,14 @@ public:
       }
       if(hasMoreWork) {
             // inform scheduler that we have more work
-        scheduler.callback_group_ready(this);
+        scheduler.callback_group_ready(this, false);
       }
     }
 
+    void mark_as_executing()
+    {
+      not_ready = true;
+    }
 
     bool is_ready();
 
@@ -124,7 +128,7 @@ protected:
      * it if needed.
      */
     template<typename add_fun>
-    void add_ready_entity(const add_fun & fun)
+    inline void add_ready_entity(const add_fun & fun)
     {
       {
         std::lock_guard l(ready_mutex);
@@ -137,10 +141,11 @@ protected:
 
         idle = false;
       }
-          // If we reached this point, we were idle and now have work,
-          // therefore we need to move this callback group into the list
-          // of ready callback groups.
-      scheduler.callback_group_ready(this);
+
+      // If we reached this point, we were idle and now have work,
+      // therefore we need to move this callback group into the list
+      // of ready callback groups.
+      scheduler.callback_group_ready(this, true);
     }
 
     void mark_as_skiped()
@@ -194,21 +199,30 @@ private:
     });
   }
 
-  // Will be called, by CallbackGroupHandle if any entity in the cb group is ready for execution
-  // and the cb group was idle before
-  void callback_group_ready(CallbackGroupHandle *handle)
+  /** Will be called, by CallbackGroupHandle if any entity in the cb group is ready for execution
+   * and the cb group was idle before
+   * @param callback_group_was_idle Is false, if no entity of the callback group was executed,
+   *                                before this call was made. This means we need to wakeup a
+   *                                a new thread.
+   */
+
+  void callback_group_ready(CallbackGroupHandle *handle, bool callback_group_was_idle)
   {
     {
-//          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", "CallbackGroupHandle moved to ready");
       std::lock_guard l(ready_callback_groups_mutex);
       ready_callback_groups.push_back(handle);
-//          RCUTILS_LOG_INFO_NAMED("CallbackGroupHandle", ("Num ready CallbackGroupHandles : " +
-//       std::to_string(ready_callback_groups.size())).c_str());
     }
 
-    wakeup_one_worker_thread();
+    if(callback_group_was_idle) {
+      unblock_one_worker_thread();
+    }
   }
 
+  struct ExecutableEntityWithInfo
+  {
+    std::optional<ExecutableEntity> entitiy;
+    bool moreEntitiesReady;
+  };
 
   /**
    * Returns the next ready entity that shall be executed.
@@ -216,8 +230,8 @@ private:
    * it will be executed, and that the function mark_entity_as_executed
    * will be called afterwards.
    */
-  virtual std::optional<ExecutableEntity> get_next_ready_entity() = 0;
-  virtual std::optional<ExecutableEntity> get_next_ready_entity(
+  virtual ExecutableEntityWithInfo get_next_ready_entity() = 0;
+  virtual ExecutableEntityWithInfo get_next_ready_entity(
     GlobalEventIdProvider::MonotonicId max_id) = 0;
 
   /**
@@ -233,11 +247,7 @@ private:
   }
 
   /**
-   * This function inserts a dummy event into the scheduler, so
-   * that a worker thread is unblocked, but does not execute any
-   * work afterwards. This is essential a hack, to allow the
-   * executor to perform its callback group syncing, without
-   * returning, making the spin some function return
+   * Wakes up a worker thread
    */
   void unblock_one_worker_thread()
   {
@@ -264,11 +274,6 @@ private:
         return !ready_callback_groups.empty() || release_worker_once || release_workers;
     });
     release_worker_once = false;
-  }
-
-  void wakeup_one_worker_thread()
-  {
-    work_ready_conditional.notify_one();
   }
 
   void release_all_worker_threads()

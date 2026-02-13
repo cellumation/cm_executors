@@ -190,35 +190,6 @@ void EventsCBGExecutor::remove_all_nodes_and_callback_groups()
   }
 }
 
-bool EventsCBGExecutor::execute_ready_executables_until(
-  const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
-{
-  bool found_work = false;
-
-  while(true) {
-    auto ready_entity = scheduler->get_next_ready_entity();
-    if(!ready_entity) {
-      break;
-    }
-
-    found_work = true;
-
-    ready_entity->execute_function();
-
-    scheduler->mark_entity_as_executed(*ready_entity);
-
-    if(std::chrono::steady_clock::now() >= stop_time) {
-      break;
-    }
-  }
-
-//   RCUTILS_LOG_ERROR_NAMED("rclcpp",
-//                           (std::string("execute_ready_executables_until had word ")
-//                           + std::to_string(found_work)).c_str() );
-
-  return found_work;
-}
-
 bool EventsCBGExecutor::execute_previous_ready_executables_until(
   const std::chrono::time_point<std::chrono::steady_clock> & stop_time)
 {
@@ -228,15 +199,15 @@ bool EventsCBGExecutor::execute_previous_ready_executables_until(
 
   while(true) {
     auto ready_entity = scheduler->get_next_ready_entity(last_ready_id);
-    if(!ready_entity) {
+    if(!ready_entity.entitiy) {
       break;
     }
 
     found_work = true;
 
-    ready_entity->execute_function();
+    ready_entity.entitiy->execute_function();
 
-    scheduler->mark_entity_as_executed(*ready_entity);
+    scheduler->mark_entity_as_executed(*ready_entity.entitiy);
 
     if(std::chrono::steady_clock::now() >= stop_time) {
       break;
@@ -366,15 +337,20 @@ void EventsCBGExecutor::sync_callback_groups()
 }
 
 void
-EventsCBGExecutor::run(size_t this_thread_number)
+EventsCBGExecutor::run(size_t this_thread_number, bool blockInitially)
 {
   (void) this_thread_number;
 
   while (rclcpp::ok(this->context_) && spinning.load() ) {
+    if(blockInitially) {
+      blockInitially = false;
+      scheduler->block_worker_thread();
+    }
+
     sync_callback_groups();
 
     auto ready_entity = scheduler->get_next_ready_entity();
-    if(!ready_entity) {
+    if(!ready_entity.entitiy) {
 //       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),
 //                          "Worker found no work. thread " << std::this_thread::get_id()
 //                          << " going to sleep");
@@ -384,11 +360,15 @@ EventsCBGExecutor::run(size_t this_thread_number)
       continue;
     }
 
+    if(ready_entity.moreEntitiesReady) {
+      scheduler->unblock_one_worker_thread();
+    }
+
 //     RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread "
 //       << std::this_thread::get_id() << " executing work");
-    ready_entity->execute_function();
+    ready_entity.entitiy->execute_function();
 
-    scheduler->mark_entity_as_executed(*ready_entity);
+    scheduler->mark_entity_as_executed(*ready_entity.entitiy);
   }
 
 //   RCUTILS_LOG_INFO("Stopping execution thread");
@@ -405,18 +385,18 @@ EventsCBGExecutor::run(
     sync_callback_groups();
 
     auto ready_entity = scheduler->get_next_ready_entity();
-    if(!ready_entity) {
+    if(!ready_entity.entitiy) {
       scheduler->block_worker_thread();
       continue;
     }
 
     try {
-      ready_entity->execute_function();
+      ready_entity.entitiy->execute_function();
     } catch (const std::exception & e) {
       exception_handler(e);
     }
 
-    scheduler->mark_entity_as_executed(*ready_entity);
+    scheduler->mark_entity_as_executed(*ready_entity.entitiy);
   }
 }
 
@@ -428,7 +408,7 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
   }
 
   auto ready_entity = scheduler->get_next_ready_entity();
-  if(!ready_entity) {
+  if(!ready_entity.entitiy) {
 //             RCUTILS_LOG_INFO("spin_once_internal: No work, going to sleep");
 
     if (timeout < std::chrono::nanoseconds::zero()) {
@@ -442,16 +422,16 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
 
     ready_entity = scheduler->get_next_ready_entity();
 
-    if (!ready_entity) {
+    if (!ready_entity.entitiy) {
 //                 RCUTILS_LOG_INFO("spin_once_internal: Still no work, return (timeout ?)");
       return;
     }
   }
 
   //     RCUTILS_LOG_INFO("spin_once_internal: Executing work");
-  ready_entity->execute_function();
+  ready_entity.entitiy->execute_function();
 
-  scheduler->mark_entity_as_executed(*ready_entity);
+  scheduler->mark_entity_as_executed(*ready_entity.entitiy);
 }
 
 void
@@ -538,12 +518,12 @@ EventsCBGExecutor::spin()
     for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
       threads.emplace_back([this, thread_id]()
         {
-          run(thread_id);
+          run(thread_id, true);
       });
     }
   }
 
-  run(thread_id);
+  run(thread_id, false);
   for (auto & thread : threads) {
     thread.join();
   }
