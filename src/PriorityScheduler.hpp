@@ -90,8 +90,8 @@ private:
 class PriorityScheduler : public CBGScheduler
 {
 public:
-  std::optional<ExecutableEntity> get_next_ready_entity() final;
-  std::optional<ExecutableEntity> get_next_ready_entity(
+  ExecutableEntityWithInfo get_next_ready_entity() final;
+  ExecutableEntityWithInfo get_next_ready_entity(
     GlobalEventIdProvider::MonotonicId max_id) final;
 
 private:
