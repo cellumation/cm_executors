@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "PriorityScheduler.hpp"
+#include <utility>
 
 namespace rclcpp
 {
@@ -222,7 +223,7 @@ get_handle_for_callback_group(const rclcpp::CallbackGroup::SharedPtr &/*callback
   return std::make_unique<PriorityCallbackGroupHandle>(*this);
 }
 
-std::optional<PriorityScheduler::ExecutableEntity> PriorityScheduler::get_next_ready_entity()
+CBGScheduler::ExecutableEntityWithInfo PriorityScheduler::get_next_ready_entity()
 {
   std::lock_guard l(ready_callback_groups_mutex);
 
@@ -239,15 +240,17 @@ std::optional<PriorityScheduler::ExecutableEntity> PriorityScheduler::get_next_r
         ready_cbg->get_next_ready_entity(cur_prio);
       if(ret) {
         ready_callback_groups.erase(it);
-        return ret;
+        return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::move(ret),
+          .moreEntitiesReady = !ready_callback_groups.empty()};
       }
     }
   }
 
-  return std::nullopt;
+  return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::nullopt,
+    .moreEntitiesReady = false};
 }
 
-std::optional<PriorityScheduler::ExecutableEntity> PriorityScheduler::get_next_ready_entity(
+CBGScheduler::ExecutableEntityWithInfo PriorityScheduler::get_next_ready_entity(
   GlobalEventIdProvider::MonotonicId max_id)
 {
   std::lock_guard l(ready_callback_groups_mutex);
@@ -268,12 +271,14 @@ std::optional<PriorityScheduler::ExecutableEntity> PriorityScheduler::get_next_r
         ready_cbg->get_next_ready_entity(max_id, cur_prio);
       if(ret) {
         ready_callback_groups.erase(it);
-        return ret;
+        return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::move(ret),
+          .moreEntitiesReady = !ready_callback_groups.empty()};
       }
     }
   }
 
-  return std::nullopt;
+  return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::nullopt,
+    .moreEntitiesReady = false};
 }
 }  // namespace executors
 }  // namespace rclcpp

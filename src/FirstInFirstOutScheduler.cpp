@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "FirstInFirstOutScheduler.hpp"
+#include <utility>
 
 namespace rclcpp
 {
@@ -122,6 +123,8 @@ get_next_ready_entity()
       continue;
     }
 
+    mark_as_executing();
+
     return CBGScheduler::ExecutableEntity{exec_fun, this};
   }
 
@@ -154,6 +157,8 @@ get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id)
       continue;
     }
 
+    mark_as_executing();
+
     return CBGScheduler::ExecutableEntity{exec_fun, this};
   }
 
@@ -171,8 +176,7 @@ get_handle_for_callback_group(const rclcpp::CallbackGroup::SharedPtr &/*callback
   return std::make_unique<FirstInFirstOutCallbackGroupHandle>(*this);
 }
 
-std::optional<FirstInFirstOutScheduler::ExecutableEntity> FirstInFirstOutScheduler::
-get_next_ready_entity()
+CBGScheduler::ExecutableEntityWithInfo FirstInFirstOutScheduler::get_next_ready_entity()
 {
   std::lock_guard l(ready_callback_groups_mutex);
 
@@ -184,15 +188,17 @@ get_next_ready_entity()
     std::optional<FirstInFirstOutScheduler::ExecutableEntity> ret =
       ready_cbg->get_next_ready_entity();
     if(ret) {
-      return ret;
+      return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::move(ret),
+        .moreEntitiesReady = !ready_callback_groups.empty()};
     }
   }
 
-  return std::nullopt;
+  return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::nullopt,
+    .moreEntitiesReady = false};
 }
 
-std::optional<FirstInFirstOutScheduler::ExecutableEntity> FirstInFirstOutScheduler::
-get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id)
+CBGScheduler::ExecutableEntityWithInfo FirstInFirstOutScheduler::get_next_ready_entity(
+  GlobalEventIdProvider::MonotonicId max_id)
 {
   std::lock_guard l(ready_callback_groups_mutex);
 
@@ -206,11 +212,13 @@ get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id)
       ready_cbg->get_next_ready_entity(max_id);
     if(ret) {
       ready_callback_groups.erase(it);
-      return ret;
+      return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::move(ret),
+        .moreEntitiesReady = !ready_callback_groups.empty()};
     }
   }
 
-  return std::nullopt;
+  return CBGScheduler::ExecutableEntityWithInfo{.entitiy = std::nullopt,
+    .moreEntitiesReady = false};
 }
 }  // namespace executors
 }  // namespace rclcpp
