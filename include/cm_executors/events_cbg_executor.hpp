@@ -230,7 +230,7 @@ public:
 protected:
   RCLCPP_PUBLIC
   void
-  run(size_t this_thread_number);
+  run(size_t this_thread_number, bool blockInitially);
 
   void
   run(size_t this_thread_number, std::function<void(const std::exception & e)> exception_handler);
@@ -253,9 +253,6 @@ protected:
   };
 
   void set_callbacks(CallbackGroupData & cgd);
-
-  bool execute_ready_executables_until(
-    const std::chrono::time_point<std::chrono::steady_clock> & stop_time);
 
   /**
    * This function will execute all available executables,
