@@ -146,7 +146,10 @@ void EventsCBGExecutor::shutdown()
 
   remove_all_nodes_and_callback_groups();
 
-  callback_groups.clear();
+  {
+    std::scoped_lock l(callback_groups_mutex);
+    callback_groups.clear();
+  }
 
   // Remove shutdown callback handle registered to Context
   if (!context_->remove_on_shutdown_callback(shutdown_callback_handle_) ) {
