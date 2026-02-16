@@ -88,26 +88,17 @@ public:
        */
     void mark_as_executed()
     {
-      bool hasMoreWork = false;
       {
         std::lock_guard l(ready_mutex);
         not_ready = false;
 
         if(!has_ready_entities()) {
           idle = true;
-        } else {
-          hasMoreWork = true;
+          return;
         }
       }
-      if(hasMoreWork) {
-            // inform scheduler that we have more work
-        scheduler.callback_group_ready(this, false);
-      }
-    }
-
-    void mark_as_executing()
-    {
-      not_ready = true;
+      // inform scheduler that we have more work
+      scheduler.callback_group_ready(this, false);
     }
 
     bool is_ready();
@@ -128,7 +119,7 @@ protected:
      * it if needed.
      */
     template<typename add_fun>
-    inline void add_ready_entity(const add_fun & fun)
+    void add_ready_entity(const add_fun & fun)
     {
       {
         std::lock_guard l(ready_mutex);
@@ -159,6 +150,17 @@ protected:
 //                                    " but work was ready");
 //       }
     }
+
+    /**
+     * Must be called by derived classes if a ready entity is
+     * returned. This call must happen under a lock holding the
+     * ready_mutex.
+     */
+    void mark_as_executing()
+    {
+      not_ready = true;
+    }
+
     std::mutex ready_mutex;
 
 private:
@@ -205,7 +207,6 @@ private:
    *                                before this call was made. This means we need to wakeup a
    *                                a new thread.
    */
-
   void callback_group_ready(CallbackGroupHandle *handle, bool callback_group_was_idle)
   {
     {

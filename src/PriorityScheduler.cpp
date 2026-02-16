@@ -172,6 +172,8 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
       continue;
     }
 
+    mark_as_executing();
+
     return CBGScheduler::ExecutableEntity{exec_fun, this};
   }
 
@@ -204,6 +206,8 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
       // was deleted, or in case of timer was canceled
       continue;
     }
+
+    mark_as_executing();
 
     return CBGScheduler::ExecutableEntity{exec_fun, this};
   }

@@ -506,21 +506,17 @@ EventsCBGExecutor::spin()
 //         "rclcpp",
 //         "EventsCBGExecutor::spin()");
 
-
-  if (spinning.exchange(true) ) {
+  if (spinning.exchange(true)) {
     throw std::runtime_error("spin() called while already spinning");
   }
   RCPPUTILS_SCOPE_EXIT(this->spinning.store(false); );
   std::vector<std::thread> threads;
   size_t thread_id = 0;
-  {
-//     std::lock_guard wait_lock{wait_mutex_};
-    for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
-      threads.emplace_back([this, thread_id]()
-        {
-          run(thread_id, true);
-      });
-    }
+  for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
+    threads.emplace_back([this, thread_id]()
+      {
+        run(thread_id, true);
+    });
   }
 
   run(thread_id, false);
@@ -537,14 +533,12 @@ void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> excep
   RCPPUTILS_SCOPE_EXIT(this->spinning.store(false); );
   std::vector<std::thread> threads;
   size_t thread_id = 0;
-  {
-    for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
-      threads.emplace_back([this, thread_id, exception_handler]()
-        {
-          run(thread_id, exception_handler);
-        }
-      );
-    }
+  for ( ; thread_id < number_of_threads_ - 1; ++thread_id) {
+    threads.emplace_back([this, thread_id, exception_handler]()
+      {
+        run(thread_id, exception_handler);
+      }
+    );
   }
 
   run(thread_id, exception_handler);
