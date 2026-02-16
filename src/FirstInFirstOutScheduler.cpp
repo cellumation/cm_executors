@@ -28,8 +28,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
-      }
-           );
+            });
          };
 }
 
@@ -43,7 +42,7 @@ get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 
                ready_entities.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                  executed_callback});
-    });
+            });
          };
 }
 
@@ -57,7 +56,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
-    });
+            });
          };
 }
 
@@ -71,7 +70,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
-    });
+            });
          };
 }
 
@@ -87,7 +86,7 @@ std::function<void(size_t,
                  ready_entities.emplace_back(CBGScheduler::WaitableWithEventType({weak_ptr,
                    event_type}));
                }
-    });
+            });
          };
 }
 std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callback_for_entity(
@@ -100,7 +99,7 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
-    });
+            });
          };
 }
 
