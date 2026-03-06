@@ -68,8 +68,8 @@ public:
   RCLCPP_PUBLIC
   virtual void
   add_callback_group(
-    rclcpp::CallbackGroup::SharedPtr group_ptr,
-    rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr,
+    const rclcpp::CallbackGroup::SharedPtr & group_ptr,
+    const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
     bool notify = true);
 
   RCLCPP_PUBLIC
@@ -79,12 +79,14 @@ public:
   RCLCPP_PUBLIC
   virtual void
   remove_callback_group(
-    rclcpp::CallbackGroup::SharedPtr group_ptr,
+    const rclcpp::CallbackGroup::SharedPtr & group_ptr,
     bool notify = true);
 
   RCLCPP_PUBLIC
   virtual void
-  add_node(rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr, bool notify = true);
+  add_node(
+    const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
+    bool notify = true);
 
   /// Convenience function which takes Node and forwards NodeBaseInterface.
   /**
@@ -92,11 +94,13 @@ public:
    */
   RCLCPP_PUBLIC
   virtual void
-  add_node(std::shared_ptr<rclcpp::Node> node_ptr, bool notify = true);
+  add_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify = true);
 
   RCLCPP_PUBLIC
   virtual void
-  remove_node(rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr, bool notify = true);
+  remove_node(
+    const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
+    bool notify = true);
 
   /// Convenience function which takes Node and forwards NodeBaseInterface.
   /**
@@ -104,11 +108,11 @@ public:
    */
   RCLCPP_PUBLIC
   virtual void
-  remove_node(std::shared_ptr<rclcpp::Node> node_ptr, bool notify = true);
+  remove_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify = true);
 
 
   // add a callback group to the executor, not bound to any node
-  void add_callback_group_only(rclcpp::CallbackGroup::SharedPtr group_ptr);
+  void add_callback_group_only(const rclcpp::CallbackGroup::SharedPtr & group_ptr);
 
   /**
    * \sa rclcpp::Executor:spin() for more details
