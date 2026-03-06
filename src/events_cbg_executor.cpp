@@ -552,8 +552,8 @@ void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> excep
 
 void
 EventsCBGExecutor::add_callback_group(
-  rclcpp::CallbackGroup::SharedPtr group_ptr,
-  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr /*node_ptr*/,
+  const rclcpp::CallbackGroup::SharedPtr & group_ptr,
+  const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & /*node_ptr*/,
   bool notify)
 {
   {
@@ -635,7 +635,7 @@ const
 
 void
 EventsCBGExecutor::remove_callback_group(
-  rclcpp::CallbackGroup::SharedPtr group_ptr,
+  const rclcpp::CallbackGroup::SharedPtr & group_ptr,
   bool notify)
 {
   bool found = false;
@@ -681,7 +681,7 @@ EventsCBGExecutor::remove_callback_group(
 
 void
 EventsCBGExecutor::add_node(
-  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr,
+  const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
   bool notify)
 {
   // If the node already has an executor
@@ -707,14 +707,14 @@ EventsCBGExecutor::add_node(
 }
 
 void
-EventsCBGExecutor::add_node(std::shared_ptr<rclcpp::Node> node_ptr, bool notify)
+EventsCBGExecutor::add_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify)
 {
   add_node(node_ptr->get_node_base_interface(), notify);
 }
 
 void
 EventsCBGExecutor::remove_node(
-  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr,
+  const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
   bool notify)
 {
   {
@@ -731,7 +731,7 @@ EventsCBGExecutor::remove_node(
   }
 
   node_ptr->for_each_callback_group(
-    [this](rclcpp::CallbackGroup::SharedPtr cbg)
+    [this](const rclcpp::CallbackGroup::SharedPtr & cbg)
     {
       unregister_event_callbacks(cbg);
     }
@@ -755,13 +755,13 @@ EventsCBGExecutor::remove_node(
 }
 
 void
-EventsCBGExecutor::remove_node(std::shared_ptr<rclcpp::Node> node_ptr, bool notify)
+EventsCBGExecutor::remove_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify)
 {
   remove_node(node_ptr->get_node_base_interface(), notify);
 }
 
 // add a callback group to the executor, not bound to any node
-void EventsCBGExecutor::add_callback_group_only(rclcpp::CallbackGroup::SharedPtr group_ptr)
+void EventsCBGExecutor::add_callback_group_only(const rclcpp::CallbackGroup::SharedPtr & group_ptr)
 {
   add_callback_group(group_ptr, nullptr, true);
 }
