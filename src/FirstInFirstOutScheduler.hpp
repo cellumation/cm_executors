@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+
 #include <deque>
 #include <memory>
-#include <variant>
+
 #include <vector>
 
 #include <cm_executors/ready_entity.hpp>
@@ -25,14 +27,11 @@ namespace rclcpp
 {
 namespace executors
 {
-
-
-struct FirstInFirstOutCallbackGroupHandle : public CBGScheduler::CallbackGroupHandle
+struct FirstInFirstOutCallbackGroupHandle final : public CBGScheduler::CallbackGroupHandle
 {
 public:
   explicit FirstInFirstOutCallbackGroupHandle(CBGScheduler & scheduler)
   : CallbackGroupHandle(scheduler) {}
-  ~FirstInFirstOutCallbackGroupHandle() final {}
 
   std::function<void(size_t)> get_ready_callback_for_entity(
     const rclcpp::SubscriptionBase::WeakPtr & entity) final;

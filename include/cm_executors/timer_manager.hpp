@@ -11,8 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
-#include <inttypes.h>
+
 #include <rcl/timer.h>
 
 #include <chrono>
@@ -44,7 +45,7 @@ class ClockConditionalVariable
 
 public:
   explicit ClockConditionalVariable(rclcpp::Context::SharedPtr context)
-  :context_(context)
+  :context_(std::move(context))
   {
     if (!context_ || !context_->is_valid()) {
       throw std::runtime_error("context cannot be slept with because it's invalid");
@@ -67,7 +68,8 @@ public:
 
   bool
   wait_until(
-    std::unique_lock<std::mutex> & lock, const rclcpp::Clock::SharedPtr & clock, rclcpp::Time until,
+    std::unique_lock<std::mutex> & lock, const rclcpp::Clock::SharedPtr & clock,
+    const rclcpp::Time & until,
     const std::function<bool ()> & pred)
   {
     if(lock.mutex() != &pred_mutex_) {
@@ -183,7 +185,7 @@ public:
    */
   void remove_timer(const rclcpp::TimerBase::SharedPtr & timer)
   {
-    rcl_clock_t * clock_type_of_timer;
+    rcl_clock_t * clock_type_of_timer{};
 
     std::shared_ptr<const rcl_timer_t> handle = timer->get_timer_handle();
 
@@ -242,7 +244,7 @@ public:
     const rclcpp::TimerBase::SharedPtr & timer,
     const std::function<void(const std::function<void()> executed_cb)> & timer_ready_callback)
   {
-    rcl_clock_t * clock_type_of_timer;
+    rcl_clock_t * clock_type_of_timer{};
 
     std::shared_ptr<const rcl_timer_t> handle = timer->get_timer_handle();
 
@@ -260,7 +262,7 @@ public:
 
     std::unique_ptr<TimerData> data = std::make_unique<TimerData>(TimerData{std::move(handle),
           timer,
-          GetClockHelper::get_clock(*timer), false, std::move(timer_ready_callback)});
+          GetClockHelper::get_clock(*timer), false, timer_ready_callback});
 
     timer->set_on_reset_callback(
       [data_ptr = data.get(), this](size_t) {
@@ -352,7 +354,7 @@ private:
       timer_data->in_running_list = false;
     }
 
-    int64_t next_call_time;
+    int64_t next_call_time{};
 
     rcl_ret_t ret = rcl_timer_get_next_call_time(timer_data->rcl_ref.get(), &next_call_time);
 
@@ -385,7 +387,7 @@ private:
         continue;
       }
 
-      int64_t time_until_call;
+      int64_t time_until_call{};
 
       const rcl_timer_t * rcl_timer_ref = running_timers.begin()->second->rcl_ref.get();
       auto ret = rcl_timer_get_time_until_next_call(rcl_timer_ref, &time_until_call);
@@ -425,10 +427,10 @@ private:
         running_timers.erase(running_timers.begin());
 
         continue;
-      } else {
+      }  // else {
 //         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
 //         "Timer NOT ready, next call time is %+" PRId64 , running_timers.begin()->first.count());
-      }
+//      }
       break;
     }
 
