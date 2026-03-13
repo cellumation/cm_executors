@@ -93,7 +93,6 @@ EventsCBGExecutor::EventsCBGExecutor(
 
   global_executable_cache->add_guard_condition_event(
     shutdown_guard_condition_, [this]() {
-//       RCUTILS_LOG_ERROR_NAMED ("rclcpp", "Shutdown guard condition triggered !");
       shutdown();
     });
 
@@ -116,7 +115,6 @@ EventsCBGExecutor::EventsCBGExecutor(
 //     {
 //       // wait either forever, or until something signaled the rcl layer to wake up
 //       auto res = wait_set_.wait();
-//       RCUTILS_LOG_ERROR_NAMED ("rclcpp", "rcl Wait returned, waking scheduler  !");
 //
 //       // we need to wake up for some reason, signal the scheduler
 //       interrupt_guard_condition_->trigger();
@@ -239,7 +237,6 @@ void EventsCBGExecutor::sync_callback_groups()
 
   std::scoped_lock l(callback_groups_mutex);
 
-//   RCUTILS_LOG_ERROR_NAMED("rclcpp", "sync_callback_groups");
 
   std::vector<std::pair<CallbackGroupData *, rclcpp::CallbackGroup::SharedPtr>> cur_group_data;
   cur_group_data.reserve(callback_groups.size() );
@@ -251,9 +248,7 @@ void EventsCBGExecutor::sync_callback_groups()
     }
   }
 
-//     RCUTILS_LOG_ERROR_NAMED("rclcpp", "sync_callback_groups before lock");
 //     std::scoped_lock<std::mutex> lk ( callback_groups_mutex );
-//     RCUTILS_LOG_ERROR_NAMED("rclcpp", "sync_callback_groups after lock");
   std::vector<CallbackGroupData> next_group_data;
 
   std::set<CallbackGroup *> added_cbgs;
@@ -270,7 +265,6 @@ void EventsCBGExecutor::sync_callback_groups()
 
       for (const auto & pair : cur_group_data) {
         if (pair.second == cbg) {
-//               RCUTILS_LOG_INFO("Using existing callback group");
           next_group_data.push_back(std::move(*pair.first) );
           // call regenerate, in case something changed in the group
           next_group_data.back().registered_entities->regenerate_events();
@@ -278,7 +272,6 @@ void EventsCBGExecutor::sync_callback_groups()
         }
       }
 
-//       RCUTILS_LOG_INFO("Using new callback group");
 
       CallbackGroupData new_entry;
       new_entry.registered_entities = std::make_unique<RegisteredEntityCache>(*scheduler,
@@ -307,7 +300,6 @@ void EventsCBGExecutor::sync_callback_groups()
     nodes_executable_cache->clear();
 //     nodes_executable_cache->guard_conditions.reserve(added_nodes_cpy.size());
 
-//     RCUTILS_LOG_ERROR("Added node size is %lu", added_nodes_cpy.size());
 
     for (const node_interfaces::NodeBaseInterface::WeakPtr & node_weak_ptr : added_nodes_cpy) {
       auto node_ptr = node_weak_ptr.lock();
@@ -324,7 +316,6 @@ void EventsCBGExecutor::sync_callback_groups()
         nodes_executable_cache->add_guard_condition_event(
           node_ptr->get_shared_notify_guard_condition(),
           [this]() {
-//             RCUTILS_LOG_INFO("Node changed GC triggered");
             needs_callback_group_resync.store(true);
           });
       }
@@ -358,12 +349,7 @@ EventsCBGExecutor::run(size_t this_thread_number, bool blockInitially)
 
     auto ready_entity = scheduler->get_next_ready_entity();
     if(!ready_entity.entitiy) {
-//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),
-//                          "Worker found no work. thread " << std::this_thread::get_id()
-//                          << " going to sleep");
       scheduler->block_worker_thread();
-//       RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread "
-//         << std::this_thread::get_id() << " woken up");
       continue;
     }
 
@@ -371,14 +357,11 @@ EventsCBGExecutor::run(size_t this_thread_number, bool blockInitially)
       scheduler->unblock_one_worker_thread();
     }
 
-//     RCLCPP_INFO_STREAM(rclcpp::get_logger("EventsCBGExecutor"),"Worker thread "
-//       << std::this_thread::get_id() << " executing work");
     ready_entity.entitiy->execute_function();
 
     scheduler->mark_entity_as_executed(*ready_entity.entitiy);
   }
 
-//   RCUTILS_LOG_INFO("Stopping execution thread");
 }
 
 void
@@ -416,7 +399,6 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
 
   auto ready_entity = scheduler->get_next_ready_entity();
   if(!ready_entity.entitiy) {
-//             RCUTILS_LOG_INFO("spin_once_internal: No work, going to sleep");
 
     if (timeout < std::chrono::nanoseconds::zero()) {
       // can't use std::chrono::nanoseconds::max, as wait_for
@@ -430,12 +412,10 @@ void EventsCBGExecutor::spin_once_internal(std::chrono::nanoseconds timeout)
     ready_entity = scheduler->get_next_ready_entity();
 
     if (!ready_entity.entitiy) {
-//                 RCUTILS_LOG_INFO("spin_once_internal: Still no work, return (timeout ?)");
       return;
     }
   }
 
-  //     RCUTILS_LOG_INFO("spin_once_internal: Executing work");
   ready_entity.entitiy->execute_function();
 
   scheduler->mark_entity_as_executed(*ready_entity.entitiy);
@@ -509,10 +489,6 @@ bool EventsCBGExecutor::collect_and_execute_ready_events(
 void
 EventsCBGExecutor::spin()
 {
-//     RCUTILS_LOG_ERROR_NAMED(
-//         "rclcpp",
-//         "EventsCBGExecutor::spin()");
-
   if (spinning.exchange(true)) {
     throw std::runtime_error("spin() called while already spinning");
   }

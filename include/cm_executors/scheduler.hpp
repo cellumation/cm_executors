@@ -148,11 +148,6 @@ protected:
       if(!has_ready_entities()) {
         idle = true;
       }
-//       else
-//       {
-//           throw std::runtime_error("Internal error, group marked as skipped,"
-//                                    " but work was ready");
-//       }
     }
 
     /**

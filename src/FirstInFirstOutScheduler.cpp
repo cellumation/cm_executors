@@ -24,7 +24,6 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle", "subscriber got data");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
@@ -37,9 +36,6 @@ get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](std::function<void()> executed_callback) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
-//            "TimerBase ready callback called");
-
                ready_entities.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                  executed_callback});
             });
@@ -51,8 +47,6 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
-//            "ClientBase ready callback called");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
@@ -65,8 +59,6 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
-//            "ServiceBase ready callback called");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
@@ -80,8 +72,6 @@ std::function<void(size_t,
 {
   return [weak_ptr = entity, this](size_t nr_msg, int event_type) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
-//            "Waitable ready callback called");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(CBGScheduler::WaitableWithEventType({weak_ptr,
                    event_type}));
@@ -94,8 +84,6 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
-//            "CallbackEventType ready callback called");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_entities.emplace_back(weak_ptr);
                }
@@ -106,8 +94,6 @@ std::function<void(size_t)> FirstInFirstOutCallbackGroupHandle::get_ready_callba
 std::optional<CBGScheduler::ExecutableEntity> FirstInFirstOutCallbackGroupHandle::
 get_next_ready_entity()
 {
-//     RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle",
-//     "get_next_ready_entity called");
   std::lock_guard l(ready_mutex);
 
   while(!ready_entities.empty()) {
@@ -116,8 +102,6 @@ get_next_ready_entity()
     std::function<void()> exec_fun = first.get_execute_function();
     ready_entities.pop_front();
     if(!exec_fun) {
-//             RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle",
-//         "found ready entity, but func was empty");
       // was deleted, or in case of timer was canceled
       continue;
     }
@@ -140,17 +124,12 @@ get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id)
   while(!ready_entities.empty()) {
     auto & first = ready_entities.front();
     if(first.id > max_id) {
-//             RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle",
-//         ("had work, but Id was to small " + std::to_string(first.id) +
-//         " max id " + std::to_string(max_id)).c_str());
       return std::nullopt;
     }
 
     std::function<void()> exec_fun = first.get_execute_function();
     ready_entities.pop_front();
     if(!exec_fun) {
-//             RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle",
-//         ("found entity, but got no exec_fun " + std::to_string(max_id)).c_str());
 
       // was deleted, or in case of timer was canceled
       continue;
@@ -162,9 +141,6 @@ get_next_ready_entity(GlobalEventIdProvider::MonotonicId max_id)
   }
 
   mark_as_skiped();
-
-//   RCUTILS_LOG_ERROR_NAMED("FirstInFirstOutCallbackGroupHandle",
-//   ("no ready_entities max id " + std::to_string(max_id)).c_str());
 
   return std::nullopt;
 }

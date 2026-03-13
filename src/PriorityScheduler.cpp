@@ -24,7 +24,6 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_subscriptions.emplace_back(weak_ptr);
                }
@@ -37,9 +36,6 @@ get_ready_callback_for_entity(const rclcpp::TimerBase::WeakPtr & entity)
 {
   return [weak_ptr = entity, this](std::function<void()> executed_callback) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_INFO_NAMED("FirstInFirstOutCallbackGroupHandle",
-//            "TimerBase ready callback called");
-
                ready_timers.emplace_back(ReadyEntity::ReadyTimerWithExecutedCallback{weak_ptr,
                  executed_callback});
           });
@@ -51,7 +47,6 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_clients.emplace_back(weak_ptr);
                }
@@ -64,7 +59,6 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_services.emplace_back(weak_ptr);
                }
@@ -78,7 +72,6 @@ std::function<void(size_t,
 {
   return [weak_ptr = entity, this](size_t nr_msg, int event_type) {
            add_ready_entity([&] () {
-//         RCUTILS_LOG_ERROR_NAMED("rclcpp", "Waitable got data");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_waitables.emplace_back(CBGScheduler::WaitableWithEventType({weak_ptr,
                    event_type}));
@@ -91,7 +84,6 @@ std::function<void(size_t)> PriorityCallbackGroupHandle::get_ready_callback_for_
 {
   return [weak_ptr = entity, this](size_t nr_msg) {
            add_ready_entity([&] () {
-//                 RCUTILS_LOG_ERROR_NAMED("rclcpp", "subscriber got data");
                for (size_t i = 0; i < nr_msg; i++) {
                  ready_calls.emplace_back(weak_ptr);
                }
@@ -156,7 +148,6 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
 std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_next_ready_entity(
   std::deque<ReadyEntity> & queue)
 {
-//     RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle", "get_next_ready_entity called");
   std::lock_guard l(ready_mutex);
 
   while(!queue.empty()) {
@@ -165,8 +156,6 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
     std::function<void()> exec_fun = first.get_execute_function();
     queue.pop_front();
     if(!exec_fun) {
-//         RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
-//         "found ready entity, but func was empty");
 
       // was deleted, or in case of timer was canceled
       continue;
@@ -190,18 +179,12 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
   while(!queue.empty()) {
     auto & first = queue.front();
     if(first.id > max_id) {
-//       RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
-//                               ("had work, but Id was to small " + std::to_string(first.id)
-//                               + " max id " + std::to_string(max_id)).c_str());
       return std::nullopt;
     }
 
     std::function<void()> exec_fun = first.get_execute_function();
     queue.pop_front();
     if(!exec_fun) {
-//       RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
-//                               ("found entity, but got no exec_fun " +
-//                                 std::to_string(max_id)).c_str());
 
       // was deleted, or in case of timer was canceled
       continue;
@@ -213,10 +196,6 @@ std::optional<CBGScheduler::ExecutableEntity> PriorityCallbackGroupHandle::get_n
   }
 
   mark_as_skiped();
-
-//   RCUTILS_LOG_ERROR_NAMED("PriorityCallbackGroupHandle",
-//                           ("no ready_entities max id " +
-//                           std::to_string(max_id)).c_str());
 
   return std::nullopt;
 }

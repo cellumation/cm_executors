@@ -79,7 +79,6 @@ public:
     publishers[0]->publish(empty_msgs);
     executor.spin_some(100ms);
 
-//     RCUTILS_LOG_ERROR_NAMED ("rclcpp", "precompute done");
     if (callback_count == 0) {
       st.SkipWithError("No message was received");
     }
@@ -186,7 +185,6 @@ public:
 
     reset_heap_counters();
 
-//     std::cout << "Perf loop start !!!!!!!!!" << std::endl;
 
     for (auto _ : st) {
       (void)_;
@@ -288,7 +286,6 @@ public:
 
   void trigger()
   {
-//     std::cout << "Trigger called for idx " << gc_waitset_idx << std::endl;
     has_trigger = true;
     gc.trigger();
   }
@@ -296,7 +293,6 @@ public:
   bool
   is_ready(const rcl_wait_set_t & wait_set) override
   {
-//     std::cout << "Is ready called for idx " << gc_waitset_idx << std::endl;
     return wait_set.guard_conditions[gc_waitset_idx];
   }
 
@@ -316,7 +312,6 @@ public:
   void
   execute(const std::shared_ptr<void> & data) override
   {
-//     std::cout << "execute called for idx " << gc_waitset_idx << std::endl;
     has_trigger = false;
     (void) data;
     if (cb_fun) {
@@ -425,14 +420,10 @@ public:
               last_cb_triggered = true;
             }
             cascase_done.notify_all();
-//             RCUTILS_LOG_ERROR_NAMED("benchmark", "Notify done");
-//             std::cout << "Notify done " << std::endl;
           });
       } else {
         waitables[i]->set_execute_callback_function(
           [this, i]() {
-//             RCUTILS_LOG_ERROR_NAMED("benchmark", "Triggering callback %i", i+1);
-//               std::cout << "Triggering callback " << i+1 << std::endl;
             waitables[i + 1]->trigger();
           });
       }
@@ -471,10 +462,8 @@ public:
     std::unique_lock<std::mutex> lk(cond_mutex);
     auto thread = std::thread(
       [&executor] {
-//       std::cout << "Spin started" << std::endl;
         executor.spin();
 
-//       std::cout << "Spin terminated" << std::endl;
       });
 
     for (auto _ : st) {
@@ -486,14 +475,12 @@ public:
       waitables[0]->trigger();
 
       cascase_done.wait_for(lk, 500ms);
-//       std::cout << "waking up last cb was triggered : " << last_cb_triggered << std::endl;
 
       if (!last_cb_triggered) {
         st.SkipWithError("No message was received");
       }
     }
 
-//     std::cout << "Stopping executor " << std::endl;
 
     executor.cancel();
 

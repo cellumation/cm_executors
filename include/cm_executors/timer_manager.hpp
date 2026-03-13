@@ -293,11 +293,8 @@ private:
         std::unique_lock<std::mutex> l(clock_waiter.mutex());
         wake_up = true;
       }
-//       RCUTILS_LOG_ERROR_NAMED("cm_executors::wakeup_timer_thread", "Cancleing sleep on clock");
       clock_waiter.notify_one();
     } else {
-//       RCUTILS_LOG_ERROR_NAMED("cm_executors::wakeup_timer_thread",
-//       "thread_conditional.notify_all()");
       thread_conditional.notify_all();
     }
   }
@@ -398,8 +395,6 @@ private:
       }
 
       if (time_until_call <= 0) {
-//         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//         "Timer ready, cur call time is %+" PRId64 , running_timers.begin()->first.count());
 
         auto timer_done_callback = [timer_data = running_timers.begin()->second, this] ()
           {
@@ -411,8 +406,6 @@ private:
               std::scoped_lock l(mutex);
               add_timer_to_running_map(timer_data);
             }
-//             RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//               "Timer was executed, readding to map, waking timer_thread");
           };
 
         ready_timer_callbacks.push_back([ready_callback =
@@ -428,9 +421,7 @@ private:
 
         continue;
       }  // else {
-//         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//         "Timer NOT ready, next call time is %+" PRId64 , running_timers.begin()->first.count());
-//      }
+
       break;
     }
 
@@ -467,31 +458,22 @@ private:
         try {
           used_clock->wait_until_started();
 
-//           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//             "has running timer, using clock to sleep");
           std::unique_lock<std::mutex> l(clock_waiter.mutex());
           clock_waiter.wait_until(l, used_clock,
               rclcpp::Time(next_wakeup_time.count(), timer_type), [this] () -> bool {
               return wake_up || !running || !rclcpp::ok();
           });
           wake_up = false;
-//           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//           "sleep finished, or interrupted ");
         } catch (const std::runtime_error &) {
           // there is a race on shutdown, were the context may
           // become invalid, while we call sleep_until
           running = false;
         }
       } else {
-//         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//         "no running timer, waiting on thread_conditional");
         std::unique_lock l(mutex);
         thread_conditional.wait(l, [this]() {
-//           RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread",
-//           "thread_conditional: signal received : evaluation wakeup");
             return !running_timers.empty() || !running || !rclcpp::ok();
         });
-//         RCUTILS_LOG_ERROR_NAMED("cm_executors::timer_thread", "woken up");
       }
     }
     thread_terminated = true;
