@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <inttypes.h>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "rcpputils/scope_exit.hpp"
 #include "rclcpp/exceptions/exceptions.hpp"
-#include "rclcpp/detail/add_guard_condition_to_rcl_wait_set.hpp"
 
-#include "rclcpp/logging.hpp"
 #include "rclcpp/node.hpp"
 #include <cm_executors/timer_manager.hpp>
 #include <cm_executors/registered_entity_cache.hpp>
@@ -33,22 +31,28 @@
 namespace rclcpp::executors
 {
 
-struct GloablaWeakExecutableCache
+struct GlobalWeakExecutableCache
 {
   std::vector<GuardConditionWithFunction> guard_conditions;
 
-  ~GloablaWeakExecutableCache()
+  GlobalWeakExecutableCache() = default;
+  GlobalWeakExecutableCache(const GlobalWeakExecutableCache &) = default;
+  GlobalWeakExecutableCache(GlobalWeakExecutableCache &&) = default;
+  ~GlobalWeakExecutableCache()
   {
     for (const auto & gc_ref : guard_conditions) {
       gc_ref.guard_condition->set_on_trigger_callback(nullptr);
     }
   }
 
+  GlobalWeakExecutableCache & operator=(const GlobalWeakExecutableCache &) = default;
+  GlobalWeakExecutableCache & operator=(GlobalWeakExecutableCache &&) = default;
+
   void add_guard_condition_event(
-    rclcpp::GuardCondition::SharedPtr ptr,
+    const rclcpp::GuardCondition::SharedPtr & ptr,
     std::function<void(void)> fun)
   {
-    guard_conditions.emplace_back(GuardConditionWithFunction(ptr, std::move(fun) ) );
+    guard_conditions.emplace_back(ptr, std::move(fun));
 
 
     for (auto & entry : guard_conditions) {
@@ -80,8 +84,8 @@ EventsCBGExecutor::EventsCBGExecutor(
   shutdown_guard_condition_(std::make_shared<rclcpp::GuardCondition>(options.context) ),
   context_(options.context),
   timer_manager(std::make_unique<TimerManager>(context_)),
-  global_executable_cache(std::make_unique<GloablaWeakExecutableCache>() ),
-  nodes_executable_cache(std::make_unique<GloablaWeakExecutableCache>() )
+  global_executable_cache(std::make_unique<GlobalWeakExecutableCache>() ),
+  nodes_executable_cache(std::make_unique<GlobalWeakExecutableCache>() )
 {
   global_executable_cache->add_guard_condition_event (
         interrupt_guard_condition_,
@@ -222,7 +226,7 @@ bool EventsCBGExecutor::execute_previous_ready_executables_until(
 
 
 size_t
-EventsCBGExecutor::get_number_of_threads()
+EventsCBGExecutor::get_number_of_threads() const
 {
   return number_of_threads_;
 }
@@ -298,7 +302,7 @@ void EventsCBGExecutor::sync_callback_groups()
     }
 
     // *3 is a rough estimate of how many callback_group a node may have
-    next_group_data.reserve(added_cbgs_cpy.size() + added_nodes_cpy.size() * 3);
+    next_group_data.reserve(added_cbgs_cpy.size() + (added_nodes_cpy.size() * 3));
 
     nodes_executable_cache->clear();
 //     nodes_executable_cache->guard_conditions.reserve(added_nodes_cpy.size());
@@ -380,7 +384,7 @@ EventsCBGExecutor::run(size_t this_thread_number, bool blockInitially)
 void
 EventsCBGExecutor::run(
   size_t this_thread_number,
-  std::function<void(const std::exception & e)> exception_handler)
+  const std::function<void(const std::exception & e)> & exception_handler)
 {
   (void) this_thread_number;
 
@@ -528,7 +532,8 @@ EventsCBGExecutor::spin()
   }
 }
 
-void EventsCBGExecutor::spin(std::function<void(const std::exception & e)> exception_handler)
+void EventsCBGExecutor::spin(
+  const std::function<void(const std::exception & e)> & exception_handler)
 {
   if (spinning.exchange(true) ) {
     throw std::runtime_error("spin() called while already spinning");
@@ -682,7 +687,7 @@ EventsCBGExecutor::remove_callback_group(
 void
 EventsCBGExecutor::add_node(
   const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
-  bool notify)
+  bool /*notify*/)
 {
   // If the node already has an executor
   std::atomic_bool & has_executor = node_ptr->get_associated_with_executor_atomic();
@@ -723,11 +728,8 @@ EventsCBGExecutor::remove_node(
       std::remove_if(
         added_nodes.begin(), added_nodes.end(), [&node_ptr](const auto & weak_ptr) {
           const auto shr_ptr = weak_ptr.lock();
-          if (shr_ptr && shr_ptr == node_ptr) {
-            return true;
-          }
-          return false;
-        }), added_nodes.end() );
+          return shr_ptr && shr_ptr == node_ptr;
+        }), added_nodes.end());
   }
 
   node_ptr->for_each_callback_group(

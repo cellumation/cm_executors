@@ -15,17 +15,13 @@
 #pragma once
 
 #include <chrono>
-#include <deque>
 #include <memory>
 #include <mutex>
-#include <set>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include "rclcpp/executor.hpp"
 #include "rclcpp/macros.hpp"
-#include "rclcpp/memory_strategies.hpp"
 #include "rclcpp/visibility_control.hpp"
 
 namespace rclcpp
@@ -36,7 +32,7 @@ namespace executors
 class TimerManager;
 struct RegisteredEntityCache;
 class CBGScheduler;
-struct GloablaWeakExecutableCache;
+struct GlobalWeakExecutableCache;
 
 class EventsCBGExecutor : public rclcpp::Executor
 {
@@ -66,49 +62,49 @@ public:
   virtual ~EventsCBGExecutor();
 
   RCLCPP_PUBLIC
-  virtual void
+  void
   add_callback_group(
     const rclcpp::CallbackGroup::SharedPtr & group_ptr,
     const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
-    bool notify = true);
+    bool notify = true) override;
 
   RCLCPP_PUBLIC
-  virtual std::vector<rclcpp::CallbackGroup::WeakPtr>
-  get_all_callback_groups();
+  std::vector<rclcpp::CallbackGroup::WeakPtr>
+  get_all_callback_groups() override;
 
   RCLCPP_PUBLIC
-  virtual void
+  void
   remove_callback_group(
     const rclcpp::CallbackGroup::SharedPtr & group_ptr,
-    bool notify = true);
+    bool notify = true) override;
 
   RCLCPP_PUBLIC
-  virtual void
+  void
   add_node(
     const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
-    bool notify = true);
+    bool notify = true) override;
 
   /// Convenience function which takes Node and forwards NodeBaseInterface.
   /**
    * \see rclcpp::Executor::add_node
    */
   RCLCPP_PUBLIC
-  virtual void
-  add_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify = true);
+  void
+  add_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify = true) override;
 
   RCLCPP_PUBLIC
-  virtual void
+  void
   remove_node(
     const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_ptr,
-    bool notify = true);
+    bool notify = true) override;
 
   /// Convenience function which takes Node and forwards NodeBaseInterface.
   /**
    * \see rclcpp::Executor::remove_node
    */
   RCLCPP_PUBLIC
-  virtual void
-  remove_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify = true);
+  void
+  remove_node(const std::shared_ptr<rclcpp::Node> & node_ptr, bool notify = true) override;
 
 
   // add a callback group to the executor, not bound to any node
@@ -120,7 +116,7 @@ public:
    */
   RCLCPP_PUBLIC
   void
-  spin();
+  spin() override;
 
   /**
    * \sa rclcpp::Executor:spin() for more details
@@ -132,14 +128,14 @@ public:
    */
   RCLCPP_PUBLIC
   void
-  spin(std::function<void(const std::exception & e)> exception_handler);
+  spin(const std::function<void(const std::exception &)> & exception_handler);
 
-  virtual void
-  spin_once(std::chrono::nanoseconds timeout = std::chrono::nanoseconds(-1));
+  void
+  spin_once(std::chrono::nanoseconds timeout = std::chrono::nanoseconds(-1)) override;
 
   RCLCPP_PUBLIC
-  virtual void
-  spin_some(std::chrono::nanoseconds max_duration = std::chrono::nanoseconds(0));
+  void
+  spin_some(std::chrono::nanoseconds max_duration = std::chrono::nanoseconds(0)) override;
 
   /**
    * @return true if work was available and executed
@@ -148,8 +144,8 @@ public:
     std::chrono::nanoseconds max_duration,
     bool recollect_if_no_work_available);
 
-  virtual void
-  spin_all(std::chrono::nanoseconds max_duration);
+  void
+  spin_all(std::chrono::nanoseconds max_duration) override;
 
 
   /// Cancel any running spin* function, causing it to return.
@@ -159,11 +155,11 @@ public:
    */
   RCLCPP_PUBLIC
   void
-  cancel();
+  cancel() override;
 
   RCLCPP_PUBLIC
   size_t
-  get_number_of_threads();
+  get_number_of_threads() const;
 
   bool
   is_spinning()
@@ -237,7 +233,9 @@ protected:
   run(size_t this_thread_number, bool blockInitially);
 
   void
-  run(size_t this_thread_number, std::function<void(const std::exception & e)> exception_handler);
+  run(
+    size_t this_thread_number,
+    const std::function<void(const std::exception &)> & exception_handler);
 
   /**
    * Te be called in termination case. E.g. destructor of shutdown callback.
@@ -312,10 +310,10 @@ private:
 
   /// Stores the executables for the internal guard conditions
   /// e.g. interrupt_guard_condition_ and shutdown_guard_condition_
-  std::unique_ptr<GloablaWeakExecutableCache> global_executable_cache;
+  std::unique_ptr<GlobalWeakExecutableCache> global_executable_cache;
 
   /// Stores the executables for guard conditions of the nodes
-  std::unique_ptr<GloablaWeakExecutableCache> nodes_executable_cache;
+  std::unique_ptr<GlobalWeakExecutableCache> nodes_executable_cache;
 };
 
 }  // namespace executors

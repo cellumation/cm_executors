@@ -11,11 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+
 #include <deque>
 #include <memory>
 #include <vector>
-#include <variant>
 
 #include <cm_executors/ready_entity.hpp>
 #include <cm_executors/events_cbg_executor.hpp>
@@ -28,12 +29,11 @@ namespace executors
 {
 
 
-struct PriorityCallbackGroupHandle : public CBGScheduler::CallbackGroupHandle
+struct PriorityCallbackGroupHandle final : public CBGScheduler::CallbackGroupHandle
 {
 public:
   explicit PriorityCallbackGroupHandle(CBGScheduler & scheduler)
   : CallbackGroupHandle(scheduler) {}
-  ~PriorityCallbackGroupHandle() final {}
 
   std::function<void(size_t)> get_ready_callback_for_entity(
     const rclcpp::SubscriptionBase::WeakPtr & entity) final;
@@ -87,7 +87,7 @@ private:
   std::deque<ReadyEntity> ready_calls;
 };
 
-class PriorityScheduler : public CBGScheduler
+class PriorityScheduler final : public CBGScheduler
 {
 public:
   ExecutableEntityWithInfo get_next_ready_entity() final;

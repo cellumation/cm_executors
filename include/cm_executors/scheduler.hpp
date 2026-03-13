@@ -26,13 +26,11 @@ namespace rclcpp
 {
 namespace executors
 {
-
 class CallbackGroupSchedulerEv;
 struct WeakExecutableCache;
 struct AnyExecutableCbgEv;
 class TimerManager;
 struct GloablaWeakExecutableCache;
-
 
 class CBGScheduler
 {
@@ -51,7 +49,7 @@ public:
   struct CallbackEventType
   {
     explicit CallbackEventType(std::function<void()> callback)
-    : callback(callback)
+    : callback(std::move(callback))
     {
     }
 
@@ -68,7 +66,13 @@ public:
     explicit CallbackGroupHandle(CBGScheduler & scheduler)
     : scheduler(scheduler) {}
 
+    CallbackGroupHandle(const CallbackGroupHandle &) = delete;
+    CallbackGroupHandle(CallbackGroupHandle &&) = delete;
+
     virtual ~CallbackGroupHandle() = default;
+
+    CallbackGroupHandle & operator=(const CallbackGroupHandle &) = delete;
+    CallbackGroupHandle & operator=(CallbackGroupHandle &&) = delete;
 
     virtual std::function<void(size_t)> get_ready_callback_for_entity(
       const rclcpp::SubscriptionBase::WeakPtr & entity) = 0;
@@ -179,6 +183,14 @@ private:
     CallbackGroupHandle *callback_handle = nullptr;
   };
 
+  CBGScheduler() = default;
+  CBGScheduler(const CBGScheduler &) = delete;
+  CBGScheduler(CBGScheduler &&) = delete;
+  virtual ~CBGScheduler() = default;
+
+  CBGScheduler & operator=(const CBGScheduler &) = delete;
+  CBGScheduler & operator=(CBGScheduler &&) = delete;
+
   CallbackGroupHandle * add_callback_group(const rclcpp::CallbackGroup::SharedPtr & callback_group)
   {
     auto uPtr = get_handle_for_callback_group(callback_group);
@@ -222,7 +234,7 @@ private:
   struct ExecutableEntityWithInfo
   {
     std::optional<ExecutableEntity> entitiy;
-    bool moreEntitiesReady;
+    bool moreEntitiesReady{};
   };
 
   /**
@@ -242,7 +254,7 @@ private:
    */
   void mark_entity_as_executed(const ExecutableEntity & e)
   {
-    if(e.callback_handle) {
+    if(e.callback_handle != nullptr) {
       e.callback_handle->mark_as_executed();
     }
   }
@@ -289,7 +301,6 @@ private:
 protected:
   virtual std::unique_ptr<CallbackGroupHandle> get_handle_for_callback_group(
     const rclcpp::CallbackGroup::SharedPtr & callback_group) = 0;
-
 
   std::mutex ready_callback_groups_mutex;
   std::deque<CallbackGroupHandle *> ready_callback_groups;

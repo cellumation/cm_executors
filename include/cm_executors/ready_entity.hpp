@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include <deque>
+
 #include <utility>
 
 #include <cm_executors/scheduler.hpp>
 #include <cm_executors/global_event_id_provider.hpp>
 #include <cm_executors/events_cbg_executor.hpp>
-
-#include "timer_manager.hpp"
 
 namespace rclcpp
 {
@@ -31,7 +29,7 @@ struct ReadyEntity
 {
   struct ReadyTimerWithExecutedCallback
   {
-    const rclcpp::TimerBase::WeakPtr timer_ptr;
+    rclcpp::TimerBase::WeakPtr timer_ptr;
         // must be called by the after executing the timer callback
     std::function<void()> timer_was_executed;
 

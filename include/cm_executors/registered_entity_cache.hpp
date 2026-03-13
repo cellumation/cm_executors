@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
 #include <unordered_map>
@@ -26,8 +27,6 @@ namespace rclcpp
 {
 namespace executors
 {
-
-
 template<class EntityType_T>
 struct WeakEntityPtrWithRemoveFunction
 {
@@ -279,10 +278,7 @@ struct RegisteredEntityCache
     rclcpp::GuardCondition::SharedPtr ptr,
     std::function<void(void)> fun)
   {
-    auto & new_entry = guard_conditions.emplace_back(
-      GuardConditionWithFunction(
-        ptr, std::move(
-          fun) ) );
+    auto & new_entry = guard_conditions.emplace_back(std::move(ptr), std::move(fun));
 
     if (new_entry.handle_guard_condition_fun) {
       new_entry.guard_condition->set_on_trigger_callback(
