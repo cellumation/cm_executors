@@ -1,8 +1,10 @@
+# This work has been merged into rclcpp
+
 # Cellumation Executors
 
-This work has been merged into rclcpp.
 
 A ROS2 package providing alternative executor implementations. This repository is kept as a historical reference.
+
 
 ## Features
 - Compared to rclcpp::experimental::EventsExecutor
